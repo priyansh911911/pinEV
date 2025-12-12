@@ -391,7 +391,8 @@ const SchedulePage = () => {
 			const amount = finalPrice + taxAmount;
 
 			if (walletBalance < amount) {
-				toast.error("Insufficient wallet balance to schedule the charging device.");
+				toast.error("Insufficient wallet balance. Redirecting to add money...");
+				router.push(`/wallet?returnTo=${encodeURIComponent(`/booking/schedule?id=${stationId}`)}`);
 				return;
 			}
 

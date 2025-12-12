@@ -15,6 +15,7 @@ import Transition from "@/components/custom/transition";
 import { Card, CardContent } from "@/components/ui/card";
 import { redirect, useRouter, useSearchParams } from "next/navigation";
 import QRCodeScannerModal from "@/components/custom/qrcode-scanner-modal";
+import { getVehiclesChargings } from "@/actions/vehicles-chargings";
 
 const StationDetailPage = () => {
 	return (
@@ -33,6 +34,7 @@ const Component = () => {
 
 	const [station, setStation] = useState<StationWithNearby | null>(null);
 	const [openScanner, setOpenScanner] = useState(false);
+	const [chargingSessions, setChargingSessions] = useState<VehicleCharging[]>([]);
 
 	const { stationData, isStationDataLoading } = Stores();
 
@@ -43,6 +45,22 @@ const Component = () => {
 
 		setStation(stationData || null);
 	}, [isStationDataLoading, stationData]);
+
+	useEffect(() => {
+		const fetchChargingSessions = async () => {
+			try {
+				const res = await getVehiclesChargings({
+					search: "status:scheduled",
+				});
+				if (!res.err) {
+					setChargingSessions(res.result);
+				}
+			} catch (error) {
+				console.error("Error fetching charging sessions:", error);
+			}
+		};
+		fetchChargingSessions();
+	}, []);
 
 	if (!isStationDataLoading && (!id || !station)) {
 		redirect("/home");
@@ -93,6 +111,7 @@ const Component = () => {
 								lat: Number(station?.latitude || 0),
 								lng: Number(station?.longitude || 0),
 							}}
+							chargingSessions={chargingSessions}
 						/>
 					</div>
 					<div className="flex-1 h-full w-full bg-background rounded-t-xl shadow-lg">

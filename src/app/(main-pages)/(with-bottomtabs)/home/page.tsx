@@ -1,6 +1,7 @@
 "use client";
 
 import { getStationsSlots } from "@/actions/stations-slots";
+import { getVehiclesChargings } from "@/actions/vehicles-chargings";
 import Header from "@/components/custom/header";
 import Map from "@/components/custom/map";
 import NearByStations from "@/components/custom/nearby-stations";
@@ -21,6 +22,7 @@ const HomePage = () => {
 
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [stations, setStations] = useState<StationWithNearby[]>([]);
+	const [chargingSessions, setChargingSessions] = useState<VehicleCharging[]>([]);
 
 	useEffect(() => {
 		const fetchStations = async () => {
@@ -85,6 +87,15 @@ const HomePage = () => {
 				}, []);
 
 				setStations(groupedByStations);
+
+				// Fetch charging sessions
+				const chargingRes = await getVehiclesChargings({
+					search: "status:scheduled",
+				});
+
+				if (!chargingRes.err) {
+					setChargingSessions(chargingRes.result);
+				}
 			} catch (error) {
 				toast.error("Failed to fetch stations.");
 				console.error("Error fetching stations:", error);
@@ -123,6 +134,7 @@ const HomePage = () => {
 				<Map
 					stations={stations}
 					center={stations.length ? { lat: stations[0].latitude, lng: stations[0].longitude } : DEFAULT_LAT_LNG}
+					chargingSessions={chargingSessions}
 				/>
 				<div className="absolute top-12 left-0 w-full bg-gradient-to-b from-background to-transparent">
 					<div className="w-[90%] mx-auto pt-12">

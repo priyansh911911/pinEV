@@ -10,9 +10,10 @@ interface MapProps {
 	stations: StationWithNearby[];
 	center: { lat: number; lng: number };
 	bookings?: Booking[];
+	chargingSessions?: VehicleCharging[];
 }
 
-const Map: FC<MapProps> = ({ stations, center, bookings }) => {
+const Map: FC<MapProps> = ({ stations, center, bookings, chargingSessions }) => {
 	const [clickedStation, setClickedStation] = useState<StationWithNearby | null>(null);
 
 	const libraries: Libraries = useMemo(() => ["places"], []);
@@ -69,29 +70,26 @@ const Map: FC<MapProps> = ({ stations, center, bookings }) => {
 				mapTypeId={google.maps.MapTypeId.ROADMAP}
 				mapContainerStyle={{ width: "100%", height: "100%" }}
 			>
-				<FlatList
-					data={stations}
-					keyExtractor={station => station.id}
-					renderItem={station => (
-						<MarkerF
-							key={station.id}
-							position={{
-								lat: Number(station?.latitude || mapCenter.lat),
-								lng: Number(station?.longitude || mapCenter.lng),
-							}}
-							icon={{
-								url: getStationPinIcon(
-									station,
-									bookings,
-									nearestStation.id === station.id
-								),
-								scaledSize: new google.maps.Size(32, 32)
-							}}
-							onClick={() => handleMarkerClick(station)}
-							animation={google.maps.Animation.DROP}
-						/>
-					)}
-				/>
+				{stations.map(station => (
+					<MarkerF
+						key={`${station.id}-${chargingSessions?.length || 0}`}
+						position={{
+							lat: Number(station?.latitude || mapCenter.lat),
+							lng: Number(station?.longitude || mapCenter.lng),
+						}}
+						icon={{
+							url: getStationPinIcon(
+								station,
+								bookings,
+								chargingSessions,
+								nearestStation?.id === station.id
+							),
+							scaledSize: new google.maps.Size(32, 32)
+						}}
+						onClick={() => handleMarkerClick(station)}
+						animation={google.maps.Animation.DROP}
+					/>
+				))}
 
 				{clickedStation && (
 					<Dialog open={!!clickedStation} onOpenChange={() => setClickedStation(null)}>

@@ -24,6 +24,8 @@ const formSchema = z.object({
 	email: z.string().email("Invalid email address"),
 	code: z.string().min(3, "Station code must be at least 3 characters"),
 	manager: z.string().min(2, "Manager name must be at least 2 characters"),
+	assigned_name: z.string().optional(),
+	assigned_phone: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -52,6 +54,8 @@ const StationAddPage = () => {
 			email: "",
 			code: "",
 			manager: "",
+			assigned_name: "",
+			assigned_phone: "",
 		},
 	});
 
@@ -73,6 +77,8 @@ const StationAddPage = () => {
 				is_deleted: false,
 				latitude: latLong?.latitude || 0,
 				longitude: latLong?.longitude || 0,
+				assigned_name: data.assigned_name || null,
+				assigned_phone: data.assigned_phone || null,
 			};
 
 			const res = await createStation({ body });
@@ -217,8 +223,32 @@ const StationAddPage = () => {
 										leftIcon={<Icons.UserIcon className="text-primary" />}
 									/>
 
+									<div className="grid gap-4 md:grid-cols-2">
+										<CustomFormField
+											control={form.control}
+											name="assigned_name"
+											type="text"
+											component="input"
+											placeholder="Enter CPO name"
+											label="Assigned CPO Name (Optional)"
+											leftIcon={<Icons.UserIcon className="text-primary" />}
+										/>
+
+										<CustomFormField
+											control={form.control}
+											name="assigned_phone"
+											type="tel"
+											component="input"
+											placeholder="Enter CPO phone"
+											label="Assigned CPO Phone (Optional)"
+											leftIcon={<Icons.PhoneIcon className="text-primary" />}
+										/>
+									</div>
+
 									<div className="flex justify-end gap-4">
-										<Button disabled={isLoading} type="button" variant="outline" onClick={() => form.reset()}>
+										<Button disabled={isLoading} type="button" variant="outline" onClick={() => {
+											form.reset();
+										}}>
 											Reset
 										</Button>
 										<Button isLoading={isLoading} type="submit" className="gap-2">
