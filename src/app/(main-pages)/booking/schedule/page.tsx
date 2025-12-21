@@ -390,27 +390,28 @@ const SchedulePage = () => {
 		try {
 			const amount = finalPrice + taxAmount;
 
-			if (walletBalance < amount) {
-				toast.error("Insufficient wallet balance. Redirecting to add money...");
-				router.push(`/wallet?returnTo=${encodeURIComponent(`/booking/schedule?id=${stationId}`)}`);
-				return;
-			}
+			// TODO: Uncomment for pre-payment functionality
+			// if (walletBalance < amount) {
+			// 	toast.error("Insufficient wallet balance. Redirecting to add money...");
+			// 	router.push(`/wallet?returnTo=${encodeURIComponent(`/booking/schedule?id=${stationId}`)}`);
+			// 	return;
+			// }
 
-			const transactionData = {
-				user: user.id,
-				amount: amount,
-				total_balance: walletBalance - amount,
-				type: "debit",
-				description: `Charge Payment`,
-				station: stationId,
-				date: formatDate("YYYY-MM-DD HH:mm:ss"),
-			};
+			// const transactionData = {
+			// 	user: user.id,
+			// 	amount: amount,
+			// 	total_balance: walletBalance - amount,
+			// 	type: "debit",
+			// 	description: `Charge Payment`,
+			// 	station: stationId,
+			// 	date: formatDate("YYYY-MM-DD HH:mm:ss"),
+			// };
 
-			const transactionRes = await saveTransaction({ body: transactionData });
-			if (transactionRes.err) {
-				toast.error("Failed to save transaction.");
-				return;
-			}
+			// const transactionRes = await saveTransaction({ body: transactionData });
+			// if (transactionRes.err) {
+			// 	toast.error("Failed to save transaction.");
+			// 	return;
+			// }
 
 			const bookingData = {
 				datetime: formatDate("YYYY-MM-DD HH:mm:ss", selectedTimeSlot),
@@ -419,8 +420,8 @@ const SchedulePage = () => {
 				station: stationId,
 				charging_slot: selectedChargingSlot?.id,
 				duration_in_minute: duration,
-				amount_paid: amount,
-				transaction: transactionRes.result.lastInsertID,
+				amount_paid: 0, // Skip pre-payment
+				// transaction: transactionRes.result.lastInsertID, // Skip transaction reference
 				status: "scheduled",
 			};
 

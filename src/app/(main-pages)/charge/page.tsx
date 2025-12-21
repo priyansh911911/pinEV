@@ -363,39 +363,15 @@ const ChargingStatusPage = () => {
 		if (bookingDetails.status !== "active") return;
 
 		let intervalId: number | null = null;
-		let timeoutId: number | null = null;
 
-		const startRegularInterval = () => {
-			// After the first 5 minutes, switch to 5-min interval
-			intervalId = window.setInterval(() => {
-				handleGetReadings(bookingDetails);
-			}, 5 * 60 * 1000);
-		};
-
-		// First, run every 1 minute for 5 minutes
-		const startInitial = () => {
-			let count = 0;
-			intervalId = window.setInterval(() => {
-				count++;
-				handleGetReadings(bookingDetails);
-				if (count >= 5) {
-					// after 5 times (i.e. 5 minutes), stop this and start 5-min interval
-					if (intervalId !== null) {
-						clearInterval(intervalId);
-					}
-					startRegularInterval();
-				}
-			}, 1 * 60 * 1000);
-		};
-
-		startInitial();
+		// Fetch readings every 0.01 seconds for real-time updates
+		intervalId = window.setInterval(() => {
+			handleGetReadings(bookingDetails);
+		}, 10); // 0.01 seconds
 
 		return () => {
 			if (intervalId !== null) {
 				clearInterval(intervalId);
-			}
-			if (timeoutId !== null) {
-				clearTimeout(timeoutId);
 			}
 		};
 	}, [handleGetReadings, bookingDetails]);
