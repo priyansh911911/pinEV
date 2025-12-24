@@ -14,9 +14,6 @@ import Layout from "@/components/layout";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import Api from "@/apis/Api";
-import { generateID } from "@/lib/utils";
-import { getOTPEmailTemplate, sendEmail } from "@/lib/email";
-import { TEST_EMAILS } from "@/lib/defaults";
 
 const loginSchema = z.object({
 	email: z.string().email("Please enter a valid email address"),
@@ -46,41 +43,36 @@ const CPOLoginPage = () => {
 	const onSubmit = async (data: LoginFormData) => {
 		setIsLoading(true);
 		try {
-			// Check if email is assigned to any stations
+			// Check if email is assigned to any stations directly
 			const stationsRes = await Api.get("/stations");
 			const assignedStations = stationsRes.result?.filter((station: any) => 
 				station.assigned_email === data.email
 			);
 
 			if (assignedStations && assignedStations.length > 0) {
-				// Generate OTP
-				const otp = generateID("9999");
-				const isTestEmail = TEST_EMAILS.includes(data.email.toLowerCase());
-
-				// Send OTP email (skip for test emails)
-				if (!isTestEmail) {
-					const htmlPart = getOTPEmailTemplate(otp);
-					await sendEmail({
-						sendTo: [{ name: data.email, email: data.email }],
-						subject: "PIN EV CPO - OTP Verification",
-						htmlPart: htmlPart,
-					}).catch(err => {
-						toast.error("Error while sending OTP email");
-						return;
-					});
-				}
-
-				// Store temporary data for OTP verification
-				localStorage.setItem("cpo_temp_email", data.email);
-				localStorage.setItem("cpo_temp_otp", otp);
+				// Get CPO name from first station
+				const cpoName = assignedStations[0].assigned_name || "CPO";
 				
-				toast.success("OTP sent to your email!");
-				router.push("/cpo-portal/login/otp");
+				// Create a simple user object for CPO
+				const cpoUser = {
+					id: data.email,
+					email: data.email,
+					name: cpoName,
+					role: "cpo"
+				};
+
+				// Store authentication data
+				localStorage.setItem("cpo_token", "authenticated");
+				localStorage.setItem("cpo_user", JSON.stringify(cpoUser));
+				localStorage.setItem("cpo_email", data.email);
+				
+				toast.success(`Welcome ${cpoName}! Login successful!`);
+				router.push("/cpo-portal/dashboard");
 			} else {
 				toast.error("No stations assigned to this email");
 			}
 		} catch (error: any) {
-			toast.error("Failed to send OTP. Please try again.");
+			toast.error("Login failed. Please try again.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -97,7 +89,7 @@ const CPOLoginPage = () => {
 					<div className="text-center">
 						<h2 className="text-2xl font-bold">Charging Point Operator</h2>
 						<p className="text-muted-foreground mt-2">
-							Enter your assigned email to receive OTP
+							Enter your assigned email to access your stations
 						</p>
 					</div>
 
@@ -126,7 +118,7 @@ const CPOLoginPage = () => {
 								{isLoading && (
 									<Icons.LoadingIcon className="mr-2 h-4 w-4 animate-spin" />
 								)}
-								{isLoading ? "Sending OTP..." : "Send OTP"}
+								{isLoading ? "Checking..." : "Login as CPO"}
 							</Button>
 						</form>
 					</Form>

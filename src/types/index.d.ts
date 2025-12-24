@@ -122,6 +122,9 @@ declare type AdminStation = {
 	price_per_kwh: number;
 	price_per_minute: number;
 	tax: number;
+	assigned_name?: string;
+	assigned_phone?: string;
+	assigned_email?: string;
 };
 
 declare type SignupDetails = {

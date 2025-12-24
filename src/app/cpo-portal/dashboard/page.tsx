@@ -44,16 +44,18 @@ const CPODashboard = () => {
 	useEffect(() => {
 		const loadDashboardData = async () => {
 			try {
-				const user = cpoAuth.getCurrentUser();
-				if (!user) {
+				const cpoEmail = localStorage.getItem("cpo_email");
+				if (!cpoEmail) {
 					router.push("/cpo-portal/login");
 					return;
 				}
 
-				// Get stations owned by this CPO
+				// Get stations assigned to this CPO email
 				const stationsResponse = await Api.get("/stations");
 				const allStations = stationsResponse.result || [];
-				const userStations = allStations.filter((station: any) => station.user === user.id);
+				const userStations = allStations.filter((station: any) => 
+					station.assigned_email === cpoEmail
+				);
 
 				// Get transactions for all CPO stations
 				const transactionsResponse = await Api.get("/transactions");

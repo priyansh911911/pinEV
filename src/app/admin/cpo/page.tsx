@@ -23,6 +23,7 @@ interface StationData {
 	totalCost: number;
 	assignedName?: string;
 	assignedPhone?: string;
+	assignedEmail?: string;
 }
 
 interface CPOData {
@@ -45,6 +46,8 @@ const CPODashboard = () => {
 	const [editingId, setEditingId] = useState<number | null>(null);
 	const [editName, setEditName] = useState("");
 	const [editPhone, setEditPhone] = useState("");
+	const [editEmail, setEditEmail] = useState("");
+	const [existingCPOs, setExistingCPOs] = useState<{email: string, name: string, phone: string}[]>([]);
 
 	const fetchData = useCallback(async () => {
 		setIsLoading(true);
@@ -84,11 +87,22 @@ const CPODashboard = () => {
 						totalCost,
 						assignedName: station.assigned_name || "",
 						assignedPhone: station.assigned_phone || "",
+						assignedEmail: station.assigned_email || "",
 					};
 				});
 
 				setStations(stationData);
 				generateCPOProfiles(stationData);
+				
+				// Extract unique CPOs for dropdown
+				const uniqueCPOs = Array.from(
+					new Map(
+						stationData
+							.filter(s => s.assignedEmail)
+							.map(s => [s.assignedEmail, { email: s.assignedEmail!, name: s.assignedName!, phone: s.assignedPhone! }])
+					).values()
+				);
+				setExistingCPOs(uniqueCPOs);
 			}
 		} catch (error) {
 			console.error("Error fetching data:", error);
@@ -134,17 +148,31 @@ const CPODashboard = () => {
 	const totalRevenue = stations.reduce((sum, s) => sum + s.totalCost, 0);
 
 	const handleSaveAssignment = async (stationId: number) => {
+		if (!editEmail || !editName) {
+			toast.error("Email and Name are required");
+			return;
+		}
 		try {
 			const result = await StationActions.updateStation({
 				id: stationId.toString(),
-				body: { assigned_name: editName, assigned_phone: editPhone },
+				body: { assigned_name: editName, assigned_phone: editPhone, assigned_email: editEmail },
 			});
-			setStations(stations.map(s => s.id === stationId ? { ...s, assignedName: editName, assignedPhone: editPhone } : s));
+			setStations(stations.map(s => s.id === stationId ? { ...s, assignedName: editName, assignedPhone: editPhone, assignedEmail: editEmail } : s));
 			setEditingId(null);
 			toast.success("Assignment saved");
+			fetchData();
 		} catch (error) {
 			console.error("Failed to save:", error);
 			toast.error("Failed to save");
+		}
+	};
+
+	const handleSelectExistingCPO = (cpoEmail: string) => {
+		const cpo = existingCPOs.find(c => c.email === cpoEmail);
+		if (cpo) {
+			setEditEmail(cpo.email);
+			setEditName(cpo.name);
+			setEditPhone(cpo.phone);
 		}
 	};
 
@@ -305,8 +333,27 @@ const CPODashboard = () => {
 												<p className="text-sm font-medium mb-2">Assigned To</p>
 												{editingId === station.id ? (
 													<div className="space-y-2">
+														{existingCPOs.length > 0 && (
+															<div>
+																<label className="text-xs text-muted-foreground">Select Existing CPO</label>
+																<select 
+																	className="w-full p-2 border rounded"
+																	onChange={(e) => handleSelectExistingCPO(e.target.value)}
+																	defaultValue=""
+																>
+																	<option value="">-- Select Existing CPO --</option>
+																	{existingCPOs.map((cpo) => (
+																		<option key={cpo.email} value={cpo.email}>
+																			{cpo.name} ({cpo.email})
+																		</option>
+																	))}
+																</select>
+																<p className="text-xs text-muted-foreground mt-1">Or enter new CPO details below</p>
+															</div>
+														)}
 														<Input placeholder="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
 														<Input placeholder="Phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+														<Input placeholder="Email" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
 														<div className="flex gap-2">
 															<Button size="sm" onClick={() => handleSaveAssignment(station.id)}>Save</Button>
 															<Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -317,11 +364,13 @@ const CPODashboard = () => {
 														<div>
 															<p className="text-sm">{station.assignedName || "Not assigned"}</p>
 															<p className="text-sm text-muted-foreground">{station.assignedPhone}</p>
+															{station.assignedEmail && <p className="text-sm text-muted-foreground">{station.assignedEmail}</p>}
 														</div>
 														<Button size="sm" variant="outline" onClick={() => {
 															setEditingId(station.id);
 															setEditName(station.assignedName || "");
 															setEditPhone(station.assignedPhone || "");
+															setEditEmail(station.assignedEmail || "");
 														}}>Edit</Button>
 													</div>
 												)}
