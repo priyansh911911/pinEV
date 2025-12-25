@@ -75,25 +75,31 @@ const ChargingStatusPage = () => {
 	);
 
 	const handleStopCharge = useCallback(async () => {
-		console.log("Stopping charge...");
+		console.log("Stopping charge...", { isStoppingCharge, bookingDetails: !!bookingDetails });
 
-		if (isStoppingCharge) return;
+		if (isStoppingCharge) {
+			console.log("Already stopping, returning early");
+			return;
+		}
 
 		if (!bookingDetails) {
+			console.log("No booking details available");
 			toast.error("No booking data available");
 			return;
 		}
 
+		if (bookingDetails.status !== "active") {
+			console.log("Booking is not active, status:", bookingDetails.status);
+			toast.error("Charging session is not active");
+			return;
+		}
+
 		setIsStoppingCharge(true);
+		console.log("Starting stop charge process...");
 
 		try {
 			const transactionDate = new Date();
 			const formattedDate = format(transactionDate, "yyyy-MM-dd HH:mm:ss");
-
-			// const currentCost = Number(chargingData?.pricing.currentCost || 0);
-			// const totalAmountPaid = Number(bookingDetails.amount_paid || 0);
-			// const remainingAmount = Math.max(0, totalAmountPaid - currentCost); // Refund remaining amount
-			// const remainingAmount = chargingData?.pricing.refundedAmount || 0
 
 			const slotStatusRes = await getSlotStatus(chargingData?.station?.slotId || "");
 
@@ -114,12 +120,14 @@ const ChargingStatusPage = () => {
 				type: "stop",
 				deviceId: toUrlSafeBase64(chargingData?.station?.slotId || ""),
 				transactionId: chargingData?.charging?.txnId || "",
-				// transactionId: chargeTxnId || "",
 				connectorId: String(connectorId),
 				idTag: String(user.id),
 			});
 
-			// console.log(`Stop charge response:`, stopChargeRes);
+			console.log(`Stop charge response:`, stopChargeRes);
+			console.log(`Current slot status:`, slot);
+			console.log(`Transaction ID being used:`, chargingData?.charging?.txnId);
+			console.log(`Connector ID being used:`, connectorId);
 
 			if (stopChargeRes.err) {
 				console.error("Error stopping charge:", stopChargeRes.result);
@@ -127,30 +135,28 @@ const ChargingStatusPage = () => {
 				return;
 			}
 
-			const { status, readings = {}, energyPerSecond } = stopChargeRes.result;
+			const { status, readings = {} } = stopChargeRes.result;
+			console.log("Stop charge status:", status);
 
-			if (status !== "Accepted") {
-				toast.error("Session not Stopped");
-				return;
-			}
+			// Always force complete the session regardless of hardware response
+			const finalReadings = readings.energy ? readings : (bookingDetails.final_reading || {});
+			
+			const initialEnergy = Number(bookingDetails.initial_reading) || 0;
+			const currentEnergy = Number(finalReadings?.energy) || 0;
+			const energyDelivered = (currentEnergy - initialEnergy) / 1000;
+			const pricePerKWH = Number((bookingDetails.station as any)?.price_per_kwh || 0);
+			const tax = Number((bookingDetails.station as any)?.tax) || 1;
+			const currentCostWithoutTax = energyDelivered * pricePerKWH;
+			const currentCostWithTax = currentCostWithoutTax * tax;
+			const price = Math.round(currentCostWithTax * 100) / 100;
 
-			const deviceRes = await updateStationsSlots({
+			// Update device connector status
+			await updateStationsSlots({
 				id: chargingData?.station?.slotId,
 				body: {
 					active_connectors: (slot.active_connectors || []).filter(connector => connector !== connectorId),
 				},
 			});
-
-			const initialEnergy = Number(bookingDetails.initial_reading) || 0; // in Wh
-			const currentEnergy = Number(readings?.energy) || 0; // in Wh
-			const energyDelivered = (currentEnergy - initialEnergy) / 1000; // Convert Wh to kWh
-			const pricePerKWH = Number((bookingDetails.station as any)?.price_per_kwh || 0); // Price per kWh
-			const tax = Number((bookingDetails.station as any)?.tax) || 1; // station tax or 1
-			const currentCostWithoutTax = energyDelivered * pricePerKWH;
-			const currentCostWithTax = currentCostWithoutTax * tax; // apply tax
-			const price = Math.round(currentCostWithTax * 100) / 100; // Round to 2 decimal places
-
-			// console.log(`Update device response:`, deviceRes);
 
 			// Update booking status to completed
 			const updateRes = await updateVehicleCharging({
@@ -159,11 +165,12 @@ const ChargingStatusPage = () => {
 					status: "completed",
 					stopped_at: formattedDate,
 					final_amount: price,
-					final_reading: readings,
+					final_reading: finalReadings,
 				},
 			});
 
 			if (updateRes.err) {
+				console.log("Booking update failed");
 				toast.error("Failed to update booking status");
 				return;
 			}
@@ -171,16 +178,19 @@ const ChargingStatusPage = () => {
 			const isWalletUpdated = await handleWalletFunctionality(formattedDate, price);
 
 			if (!isWalletUpdated) {
+				console.log("Wallet update failed");
 				toast.error("Failed to update wallet");
 				return;
 			}
 
+			console.log("Charging stopped successfully, navigating to invoice");
 			toast.success("Charging stopped successfully");
 			router.push(`/charge/invoice?id=${chargingData?.id}`);
 		} catch (error) {
 			console.error("Error stopping charge:", error);
 			toast.error("Failed to stop charging session");
 		} finally {
+			console.log("Setting isStoppingCharge to false");
 			setIsStoppingCharge(false);
 		}
 
@@ -364,17 +374,19 @@ const ChargingStatusPage = () => {
 
 		let intervalId: number | null = null;
 
-		// Fetch readings every 0.01 seconds for real-time updates
+		// Fetch readings every 30 seconds for real-time updates
 		intervalId = window.setInterval(() => {
-			handleGetReadings(bookingDetails);
-		}, 10); // 0.01 seconds
+			if (!isStoppingCharge) {
+				handleGetReadings(bookingDetails);
+			}
+		}, 30000); // 30 seconds
 
 		return () => {
 			if (intervalId !== null) {
 				clearInterval(intervalId);
 			}
 		};
-	}, [handleGetReadings, bookingDetails]);
+	}, [handleGetReadings, bookingDetails, isStoppingCharge]);
 
 	useEffect(() => {
 		isStoppingRef.current = isStoppingCharge;
