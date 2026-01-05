@@ -42,37 +42,48 @@ const CPODashboard = () => {
 	const [stations, setStations] = useState<StationData[]>([]);
 	const [cpoProfiles, setCpoProfiles] = useState<CPOData[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [viewMode, setViewMode] = useState<"stations" | "cpo">("cpo");
+	const [viewMode, setViewMode] = useState<"stations" | "cpo" | "statements">("cpo");
 	const [editingId, setEditingId] = useState<number | null>(null);
 	const [editName, setEditName] = useState("");
 	const [editPhone, setEditPhone] = useState("");
 	const [editEmail, setEditEmail] = useState("");
 	const [existingCPOs, setExistingCPOs] = useState<{email: string, name: string, phone: string}[]>([]);
+	const [allTransactions, setAllTransactions] = useState<any[]>([]);
+	const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month" | "custom">("all");
+	const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
 
 	const fetchData = useCallback(async () => {
 		setIsLoading(true);
 		try {
 			const stationsRes = await StationActions.getStations({});
-			const transactionsRes = await Api.get("/transactions");
+		const transactionsRes = await Api.get("/transactions");
 
-			if (!stationsRes.err && !transactionsRes.err) {
-				const allStations = stationsRes.result || [];
-				const allTransactions = transactionsRes.result || [];
+		if (!stationsRes.err && !transactionsRes.err) {
+			const allStations = stationsRes.result || [];
+			const allTransactions = transactionsRes.result || [];
+			
+			// Filter transactions that have valid station references
+			const validTransactions = allTransactions.filter((transaction: any) => {
+				const stationId = parseInt(transaction.station);
+				return allStations.some((station: any) => station.id === stationId && station.status === 'approved');
+			});
+			
+			setAllTransactions(validTransactions);
 
 				const stationData: StationData[] = allStations
 					.filter((station: any) => station.status === 'approved')
 					.map((station: any) => {
-					const stationTxns = allTransactions.filter(
-						(t: any) => t.station?.id === station.id || t.station === station.id
+					const stationTxns = validTransactions.filter(
+						(t: any) => parseInt(t.station) === station.id
 					);
 
 					const powerUsage = stationTxns.reduce(
-						(sum: number, t: any) => sum + (t.power_consumed || 0),
+						(sum: number, t: any) => sum + (parseFloat(t.power_consumed) || 0),
 						0
 					);
 
 					const totalCost = stationTxns.reduce(
-						(sum: number, t: any) => sum + (t.amount_paid || 0),
+						(sum: number, t: any) => sum + (parseFloat(t.amount) || 0),
 						0
 					);
 
@@ -147,6 +158,46 @@ const CPODashboard = () => {
 	const totalPower = stations.reduce((sum, s) => sum + s.powerUsage, 0);
 	const totalRevenue = stations.reduce((sum, s) => sum + s.totalCost, 0);
 
+	const getFilteredTransactions = () => {
+		const now = new Date();
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		
+		switch (dateFilter) {
+			case "today":
+				return allTransactions.filter(t => {
+					const txDate = new Date(t.date);
+					return txDate >= today;
+				});
+			case "week":
+				const weekAgo = new Date(today);
+				weekAgo.setDate(weekAgo.getDate() - 7);
+				return allTransactions.filter(t => {
+					const txDate = new Date(t.date);
+					return txDate >= weekAgo;
+				});
+			case "month":
+				const monthAgo = new Date(today);
+				monthAgo.setMonth(monthAgo.getMonth() - 1);
+				return allTransactions.filter(t => {
+					const txDate = new Date(t.date);
+					return txDate >= monthAgo;
+				});
+			case "custom":
+				if (!customDateRange.start || !customDateRange.end) return allTransactions;
+				const startDate = new Date(customDateRange.start);
+				const endDate = new Date(customDateRange.end);
+				endDate.setHours(23, 59, 59, 999);
+				return allTransactions.filter(t => {
+					const txDate = new Date(t.date);
+					return txDate >= startDate && txDate <= endDate;
+				});
+			default:
+				return allTransactions;
+		}
+	};
+
+	const filteredTransactions = getFilteredTransactions();
+
 	const handleSaveAssignment = async (stationId: number) => {
 		if (!editEmail || !editName) {
 			toast.error("Email and Name are required");
@@ -200,6 +251,13 @@ const CPODashboard = () => {
 					>
 						All Stations
 					</Button>
+					<Button 
+						variant={viewMode === "statements" ? "default" : "outline"}
+						onClick={() => setViewMode("statements")}
+						size="sm"
+					>
+						Statements
+					</Button>
 				</div>
 
 				{isLoading ? (
@@ -249,6 +307,137 @@ const CPODashboard = () => {
 										<p className="text-2xl font-bold">₹{totalRevenue.toFixed(2)}</p>
 									</CardContent>
 								</Card>
+							</div>
+						)}
+
+						{viewMode === "statements" && (
+							<div className="space-y-6">
+								<div className="flex flex-col sm:flex-row gap-4 mb-6">
+									<div className="flex gap-2 flex-wrap">
+										<Button 
+											variant={dateFilter === "all" ? "default" : "outline"}
+											onClick={() => setDateFilter("all")}
+											size="sm"
+										>
+											All Time
+										</Button>
+										<Button 
+											variant={dateFilter === "today" ? "default" : "outline"}
+											onClick={() => setDateFilter("today")}
+											size="sm"
+										>
+											Today
+										</Button>
+										<Button 
+											variant={dateFilter === "week" ? "default" : "outline"}
+											onClick={() => setDateFilter("week")}
+											size="sm"
+										>
+											This Week
+										</Button>
+										<Button 
+											variant={dateFilter === "month" ? "default" : "outline"}
+											onClick={() => setDateFilter("month")}
+											size="sm"
+										>
+											This Month
+										</Button>
+										<Button 
+											variant={dateFilter === "custom" ? "default" : "outline"}
+											onClick={() => setDateFilter("custom")}
+											size="sm"
+										>
+											Custom Range
+										</Button>
+									</div>
+									{dateFilter === "custom" && (
+										<div className="flex gap-2">
+											<Input 
+												type="date" 
+												value={customDateRange.start}
+												onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+												placeholder="Start Date"
+												className="w-40"
+											/>
+											<Input 
+												type="date" 
+												value={customDateRange.end}
+												onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+												placeholder="End Date"
+												className="w-40"
+											/>
+										</div>
+									)}
+								</div>
+								<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">{filteredTransactions.length}</div>
+										</CardContent>
+									</Card>
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Energy Sold</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">{filteredTransactions.reduce((sum, t) => sum + (parseFloat(t.power_consumed) || 0), 0).toFixed(2)} kWh</div>
+										</CardContent>
+									</Card>
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">₹{filteredTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0).toFixed(2)}</div>
+										</CardContent>
+									</Card>
+								</div>
+								<div className="space-y-4">
+									<h2 className="text-xl font-semibold">Transaction History</h2>
+									{filteredTransactions.map((transaction) => {
+										const station = stations.find(s => s.id === parseInt(transaction.station));
+										return (
+											<Card key={transaction.id}>
+												<CardContent className="p-4">
+													<div className="flex justify-between items-start mb-3">
+														<div>
+															<h3 className="font-semibold">{station?.name || 'Unknown Station'}</h3>
+															<p className="text-sm text-muted-foreground">
+																{station?.address} • Code: {station?.code}
+															</p>
+														</div>
+														<Badge variant="default">completed</Badge>
+													</div>
+													<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+														<div>
+															<p className="text-sm text-muted-foreground">Customer ID</p>
+															<p className="font-medium">{transaction.user}</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Energy</p>
+															<p className="font-medium">{(parseFloat(transaction.power_consumed) || 0).toFixed(2)} kWh</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Amount</p>
+															<p className="font-medium text-green-600">₹{parseFloat(transaction.amount || '0').toFixed(2)}</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Date & Time</p>
+															<p className="font-medium">{new Date(transaction.date).toLocaleDateString()}</p>
+														</div>
+													</div>
+													<div className="flex justify-between items-center pt-3 border-t">
+														<div className="text-sm text-muted-foreground">Transaction ID: #{transaction.id}</div>
+														<div className="text-sm">Rate: ₹{station?.price_per_kwh || 0}/kWh</div>
+													</div>
+												</CardContent>
+											</Card>
+										);
+									})}
+								</div>
 							</div>
 						)}
 

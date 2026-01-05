@@ -220,22 +220,24 @@ const ChargingStatusPage = () => {
 
 					if (res.err) {
 						console.log("res.result", res.result);
-						// Hardware stopped - auto-complete session
-						await updateVehicleCharging({
-							id: bookingId,
-							body: { status: "completed", stopped_at: format(new Date(), "yyyy-MM-dd HH:mm:ss") }
-						});
-						setBookingDetails(prev => prev ? { ...prev, status: "completed" } : null);
-						return;
+						// Hardware stopped - use last known readings instead of completing
+						reading = booking.final_reading || {};
+						status = "Accepted"; // Keep session active with last known data
+						transactionId = booking.charge_txn_id || "";
+						energyStart = Number(booking.initial_reading) || energyStart;
+					} else {
+						status = res.result.status;
+						reading = res.result.readings || booking.final_reading || {};
+						transactionId = res.result.transactionId || booking.charge_txn_id;
+						energyStart = Number(res.result.energyStart) || energyStart;
 					}
 
-					status = res.result.status;
-					reading = res.result.readings || booking.final_reading || {};
-					transactionId = res.result.transactionId || booking.charge_txn_id;
-					energyStart = Number(res.result.energyStart) || energyStart;
-
-					if (status !== "Accepted") {
-						// Hardware is OFF - auto-complete session
+					if (status !== "Accepted" && booking.final_reading?.energy) {
+						// Hardware is OFF but we have previous readings - use them
+						status = "Accepted";
+						reading = booking.final_reading;
+					} else if (status !== "Accepted") {
+						// Hardware is OFF and no previous readings - auto-complete
 						await updateVehicleCharging({
 							id: bookingId,
 							body: { status: "completed", stopped_at: format(new Date(), "yyyy-MM-dd HH:mm:ss") }
@@ -270,13 +272,20 @@ const ChargingStatusPage = () => {
 				body.final_reading = reading;
 
 				const initialEnergy = Number(booking.initial_reading) || 0; // in Wh
-				const currentEnergy = Number(reading?.energy) || 0; // in Wh
+				const currentEnergy = Number(reading?.energy) || initialEnergy; // Fallback to initial if no reading
 				const pricePerKWH = Number(station?.price_per_kwh || 10); // Price per kWh, default ₹10
-				const energyDelivered = isStarting ? 0 : (currentEnergy - initialEnergy) / 1000; // Convert Wh to kWh
+				
+				// Ensure we don't calculate negative energy or cost
+				const energyDelivered = Math.max(0, (currentEnergy - initialEnergy) / 1000); // Convert Wh to kWh
 				const currentCostWithoutTax = energyDelivered * pricePerKWH;
 				const tax = Number(station.tax) || 1; // station tax multiplier or 1
 				const currentCostWithTax = currentCostWithoutTax * tax; // apply tax
-				const currentCost = isStarting ? 0 : Math.round(currentCostWithTax * 100) / 100; // Round to 2 decimal places
+				
+				// Use previous cost if calculation results in 0 and we had a previous cost
+				let currentCost = Math.round(currentCostWithTax * 100) / 100;
+				if (currentCost === 0 && chargingData?.pricing?.currentCost > 0 && !isStarting) {
+					currentCost = chargingData.pricing.currentCost; // Keep previous cost
+				}
 
 				console.log({
 					tax: tax,
@@ -298,11 +307,11 @@ const ChargingStatusPage = () => {
 							...prev.charging,
 							energyDelivered: energyDelivered,
 							txnId: transactionId,
-							power: reading?.power || 0,
+							power: reading?.power || prev.charging.power || 0,
 						},
 						pricing: {
 							...prev.pricing,
-							currentCost: currentCost,
+							currentCost: Math.max(currentCost, prev.pricing.currentCost), // Never decrease cost
 						},
 					};
 				});

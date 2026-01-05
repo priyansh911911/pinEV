@@ -64,15 +64,15 @@ const CPODashboard = () => {
 				// Calculate stats for each station
 				const stats: StationStats[] = userStations.map((station: Station) => {
 					const stationTransactions = allTransactions.filter((t: any) => 
-						t.station?.id === station.id || t.station === station.id
+						parseInt(t.station) === station.id
 					);
 
 					const totalEnergy = stationTransactions.reduce((sum: number, t: any) => 
-						sum + (t.power_consumed || 0), 0
+						sum + (parseFloat(t.power_consumed) || 0), 0
 					);
 
 					const totalAmount = stationTransactions.reduce((sum: number, t: any) => 
-						sum + (t.amount_paid || 0), 0
+						sum + (parseFloat(t.amount) || 0), 0
 					);
 
 					return {
@@ -119,6 +119,16 @@ const CPODashboard = () => {
 
 			<Layout className="pt-24 pb-10">
 				<div className="space-y-6">
+					{/* Navigation */}
+					<div className="flex gap-3 mb-6">
+						<Link href="/cpo-portal/statements">
+							<Button variant="outline" className="flex items-center gap-2">
+								<Icons.FileTextIcon className="h-4 w-4" />
+								View Statements
+							</Button>
+						</Link>
+					</div>
+
 					{/* Summary Cards */}
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 						<Card>
