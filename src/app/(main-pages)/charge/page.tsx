@@ -74,7 +74,7 @@ const ChargingStatusPage = () => {
 		[user, walletBalance]
 	);
 
-	const handleStopCharge = useCallback(async () => {
+	const handleStopCharge = useCallback(async (bookingData?: VehicleCharging) => {
 		console.log("Stopping charge...", { isStoppingCharge, bookingDetails: !!bookingDetails });
 
 		if (isStoppingCharge) {
@@ -82,14 +82,15 @@ const ChargingStatusPage = () => {
 			return;
 		}
 
-		if (!bookingDetails) {
+		const currentBooking = bookingData || bookingDetails;
+		if (!currentBooking) {
 			console.log("No booking details available");
 			toast.error("No booking data available");
 			return;
 		}
 
-		if (bookingDetails.status !== "active") {
-			console.log("Booking is not active, status:", bookingDetails.status);
+		if (currentBooking.status !== "active") {
+			console.log("Booking is not active, status:", currentBooking.status);
 			toast.error("Charging session is not active");
 			return;
 		}
@@ -101,7 +102,8 @@ const ChargingStatusPage = () => {
 			const transactionDate = new Date();
 			const formattedDate = format(transactionDate, "yyyy-MM-dd HH:mm:ss");
 
-			const slotStatusRes = await getSlotStatus(chargingData?.station?.slotId || "");
+			const slotId = (currentBooking.charging_slot as ChargingSlot).id;
+			const slotStatusRes = await getSlotStatus(slotId);
 
 			if (slotStatusRes.err || slotStatusRes.count === 0) {
 				console.error("Error fetching slot status:", slotStatusRes.result);
@@ -118,15 +120,15 @@ const ChargingStatusPage = () => {
 
 			const stopChargeRes = await toggleCharging({
 				type: "stop",
-				deviceId: toUrlSafeBase64(chargingData?.station?.slotId || ""),
-				transactionId: chargingData?.charging?.txnId || "",
+				deviceId: toUrlSafeBase64(slotId),
+				transactionId: currentBooking.charge_txn_id || "",
 				connectorId: String(connectorId),
 				idTag: String(user.id),
 			});
 
 			console.log(`Stop charge response:`, stopChargeRes);
 			console.log(`Current slot status:`, slot);
-			console.log(`Transaction ID being used:`, chargingData?.charging?.txnId);
+			console.log(`Transaction ID being used:`, currentBooking.charge_txn_id);
 			console.log(`Connector ID being used:`, connectorId);
 
 			if (stopChargeRes.err) {
@@ -139,20 +141,20 @@ const ChargingStatusPage = () => {
 			console.log("Stop charge status:", status);
 
 			// Always force complete the session regardless of hardware response
-			const finalReadings = readings.energy ? readings : (bookingDetails.final_reading || {});
-			
-			const initialEnergy = Number(bookingDetails.initial_reading) || 0;
+			const finalReadings = readings.energy ? readings : (currentBooking.final_reading || {});
+
+			const initialEnergy = Number(currentBooking.initial_reading) || 0;
 			const currentEnergy = Number(finalReadings?.energy) || 0;
 			const energyDelivered = (currentEnergy - initialEnergy) / 1000;
-			const pricePerKWH = Number((bookingDetails.station as any)?.price_per_kwh || 0);
-			const tax = Number((bookingDetails.station as any)?.tax) || 1;
+			const pricePerKWH = Number((currentBooking.station as any)?.price_per_kwh || 0);
+			const tax = Number((currentBooking.station as any)?.tax) || 1;
 			const currentCostWithoutTax = energyDelivered * pricePerKWH;
 			const currentCostWithTax = currentCostWithoutTax * tax;
 			const price = Math.round(currentCostWithTax * 100) / 100;
 
 			// Update device connector status
 			await updateStationsSlots({
-				id: chargingData?.station?.slotId,
+				id: slotId,
 				body: {
 					active_connectors: (slot.active_connectors || []).filter(connector => connector !== connectorId),
 				},
@@ -160,7 +162,7 @@ const ChargingStatusPage = () => {
 
 			// Update booking status to completed
 			const updateRes = await updateVehicleCharging({
-				id: bookingDetails.id,
+				id: currentBooking.id,
 				body: {
 					status: "completed",
 					stopped_at: formattedDate,
@@ -185,7 +187,7 @@ const ChargingStatusPage = () => {
 
 			console.log("Charging stopped successfully, navigating to invoice");
 			toast.success("Charging stopped successfully");
-			router.push(`/charge/invoice?id=${chargingData?.id}`);
+			router.push(`/charge/invoice?id=${currentBooking.id}`);
 		} catch (error) {
 			console.error("Error stopping charge:", error);
 			toast.error("Failed to stop charging session");
@@ -230,6 +232,13 @@ const ChargingStatusPage = () => {
 						reading = res.result.readings || booking.final_reading || {};
 						transactionId = res.result.transactionId || booking.charge_txn_id;
 						energyStart = Number(res.result.energyStart) || energyStart;
+
+
+						if (res.result.energyStop && !isStoppingRef.current) {
+							console.log("energyStop detected, auto-stopping charging");
+							handleStopCharge(booking);
+							return;
+						}
 					}
 
 					if (status !== "Accepted" && booking.final_reading?.energy) {
@@ -274,13 +283,13 @@ const ChargingStatusPage = () => {
 				const initialEnergy = Number(booking.initial_reading) || 0; // in Wh
 				const currentEnergy = Number(reading?.energy) || initialEnergy; // Fallback to initial if no reading
 				const pricePerKWH = Number(station?.price_per_kwh || 10); // Price per kWh, default ₹10
-				
+
 				// Ensure we don't calculate negative energy or cost
 				const energyDelivered = Math.max(0, (currentEnergy - initialEnergy) / 1000); // Convert Wh to kWh
 				const currentCostWithoutTax = energyDelivered * pricePerKWH;
 				const tax = Number(station.tax) || 1; // station tax multiplier or 1
 				const currentCostWithTax = currentCostWithoutTax * tax; // apply tax
-				
+
 				// Use previous cost if calculation results in 0 and we had a previous cost
 				let currentCost = Math.round(currentCostWithTax * 100) / 100;
 				if (currentCost === 0 && chargingData?.pricing?.currentCost > 0 && !isStarting) {
@@ -388,7 +397,7 @@ const ChargingStatusPage = () => {
 			if (!isStoppingCharge) {
 				handleGetReadings(bookingDetails);
 			}
-		}, 30000); // 30 seconds
+		}, 3000); // 30 seconds
 
 		return () => {
 			if (intervalId !== null) {
