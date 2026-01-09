@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     // Handle charger disconnection/fault events
     if (status === 'Faulted' || status === 'Unavailable' || faultCode) {
-      await handleChargerFault(deviceId, connectorId, transactionId, faultCode || status);
+      await handleChargerFault(deviceId, connectorId, faultCode || status, transactionId);
     }
 
     return NextResponse.json({ success: true });
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleChargerFault(deviceId: string, connectorId: number, transactionId?: string, reason: string) {
+async function handleChargerFault(deviceId: string, connectorId: number, reason: string, transactionId?: string) {
   try {
     // Find active session for this device/connector
     const activeSessionsRes = await getVehiclesChargings({

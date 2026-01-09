@@ -293,7 +293,7 @@ const ChargingStatusPage = () => {
 
 				// Use previous cost if calculation results in 0 and we had a previous cost
 				let currentCost = Math.round(currentCostWithTax * 100) / 100;
-				if (currentCost === 0 && chargingData?.pricing?.currentCost > 0 && !isStarting) {
+				if (currentCost === 0 && chargingData?.pricing?.currentCost && chargingData.pricing.currentCost > 0 && !isStarting) {
 					currentCost = chargingData.pricing.currentCost; // Keep previous cost
 				}
 
