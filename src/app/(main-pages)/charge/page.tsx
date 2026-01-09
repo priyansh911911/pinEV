@@ -89,6 +89,7 @@ const ChargingStatusPage = () => {
 			return;
 		}
 
+		console.log("Current booking status:", currentBooking.status);
 		if (currentBooking.status !== "active") {
 			console.log("Booking is not active, status:", currentBooking.status);
 			toast.error("Charging session is not active");
@@ -895,7 +896,7 @@ const ChargingStatusPage = () => {
 							<AlertDialogFooter className="flex flex-row shadow-[0_-10px_60px_15px_rgba(0,0,0,0.15)] mt-4">
 								{" "}
 								<AlertDialogAction
-									onClick={handleStopCharge}
+									onClick={() => handleStopCharge(bookingDetails!)}
 									disabled={isStoppingCharge}
 									className="text-destructive hover:bg-gray-200 bg-white inline-block w-1/2 h-14"
 								>
