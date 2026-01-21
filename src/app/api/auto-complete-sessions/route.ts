@@ -24,7 +24,7 @@ export async function POST() {
 
       const shouldComplete = await checkSessionForCompletion(session);
       if (shouldComplete.complete) {
-        await completeFailedSession(session, shouldComplete.reason);
+        await completeFailedSession(session, shouldComplete.reason || 'unknown');
         completedCount++;
       }
     }
@@ -41,7 +41,7 @@ export async function POST() {
 async function checkSessionForCompletion(session: VehicleCharging) {
   const slot = session.charging_slot as ChargingSlot;
   const deviceId = toUrlSafeBase64(slot.id);
-  const sessionStartTime = new Date(session.started_at).getTime();
+  const sessionStartTime = new Date(session.started_at || new Date()).getTime();
   const now = Date.now();
   const sessionDuration = now - sessionStartTime;
   
