@@ -73,28 +73,25 @@ const CPOStatementsPage = () => {
 
 				// Get all charging sessions for CPO stations
 				console.log('Fetching vehicles-chargings...');
+				let allChargingSessions = [];
 				try {
 					const chargingResponse = await Api.get("/vehicles-chargings");
 					console.log('Charging API Response:', chargingResponse);
-					const allChargingSessions = chargingResponse.result || chargingResponse.data || chargingResponse || [];
+					allChargingSessions = chargingResponse.result || chargingResponse.data || chargingResponse || [];
 					console.log('All charging sessions:', allChargingSessions.length);
 					console.log('Sample session:', allChargingSessions[0]);
 				} catch (chargingError) {
 					console.error('Error fetching vehicles-chargings:', chargingError);
-					const allChargingSessions = [];
+					allChargingSessions = [];
 				}
-				
-					const cpoTransactions = allChargingSessions.filter((session: any) => {
-						const stationId = parseInt(session.station);
-						return userStations.some((station: Station) => station.id === stationId);
-					});
-					console.log('CPO transactions:', cpoTransactions.length);
 
-					setTransactions(cpoTransactions);
-				} catch (chargingError) {
-					console.error('Error processing charging sessions:', chargingError);
-					setTransactions([]);
-				}
+				const cpoTransactions = allChargingSessions.filter((session: any) => {
+					const stationId = parseInt(session.station);
+					return userStations.some((station: Station) => station.id === stationId);
+				});
+				console.log('CPO transactions:', cpoTransactions.length);
+
+				setTransactions(cpoTransactions);
 			} catch (error) {
 				console.error("Error loading statements data:", error);
 			} finally {
@@ -153,9 +150,9 @@ const CPOStatementsPage = () => {
 
 	const totalRevenue = filteredTransactions.reduce((sum, t) => sum + parseFloat(t.final_amount || '0'), 0);
 	const totalEnergy = filteredTransactions.reduce((sum, t) => {
-		const voltage = parseFloat(t.final_reading?.voltage || 0);
-		const current = parseFloat(t.final_reading?.current || 0);
-		const durationHours = parseFloat(t.duration_in_minute || 0) / 60;
+		const voltage = parseFloat(String(t.final_reading?.voltage || 0));
+		const current = parseFloat(String(t.final_reading?.current || 0));
+		const durationHours = parseFloat(String(t.duration_in_minute || 0)) / 60;
 		const energyKWh = (voltage * current * durationHours) / 1000;
 		return sum + energyKWh;
 	}, 0);
