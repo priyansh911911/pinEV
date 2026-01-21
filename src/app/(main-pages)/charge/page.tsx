@@ -50,10 +50,26 @@ const ChargingStatusPage = () => {
 	const handleWalletFunctionality = useCallback(
 		async (date: string, amount: number = 0) => {
 			try {
+				// Get current wallet balance from the most recent transaction
+				const { getTransactions } = await import("@/actions/transactions");
+				const recentTransactionRes = await getTransactions({
+					search: `user:${user.id}`,
+					page: "1,1",
+					sort: "-created_at"
+				});
+
+				let currentBalance = 0;
+				if (!recentTransactionRes.err && recentTransactionRes.count > 0) {
+					currentBalance = Number(recentTransactionRes.result[0].total_balance) || 0;
+				}
+
+				// Ensure we don't create negative balance
+				const newBalance = Math.max(0, currentBalance - amount);
+
 				const walletBody = {
 					user: user.id,
 					amount: amount,
-					total_balance: Number(walletBalance || 0) - amount,
+					total_balance: newBalance,
 					date: date,
 					description: "Charge payment",
 					type: "debit",
@@ -71,7 +87,7 @@ const ChargingStatusPage = () => {
 				return false;
 			}
 		},
-		[user, walletBalance]
+		[user]
 	);
 
 	const handleStopCharge = useCallback(async (bookingData?: VehicleCharging) => {

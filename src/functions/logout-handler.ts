@@ -1,5 +1,6 @@
 import { getVehiclesChargings, updateVehicleCharging } from "@/actions/vehicles-chargings";
 import { getStationsSlots, updateStationsSlots } from "@/actions/stations-slots";
+import { saveTransaction } from "@/actions/transactions";
 import { toggleCharging } from "@/functions/charging";
 import { toUrlSafeBase64 } from "@/lib/utils";
 import { format } from "date-fns";
@@ -82,15 +83,26 @@ export const stopActiveChargingSessions = async (userId: string): Promise<boolea
 				});
 
 				// Calculate final cost based on current readings
-				const readings = stopChargeRes.result.readings || session.final_reading || {};
+				const readings = stopChargeRes.result?.readings || session.final_reading || {};
 				const initialEnergy = Number(session.initial_reading) || 0;
 				const currentEnergy = Number(readings?.energy) || 0;
-				const energyDelivered = (currentEnergy - initialEnergy) / 1000; // Convert Wh to kWh
+				const energyDelivered = Math.max(0, (currentEnergy - initialEnergy) / 1000); // Convert Wh to kWh, ensure non-negative
 				const pricePerKWH = Number(station?.price_per_kwh || 0);
 				const tax = Number(station.tax) || 1;
 				const currentCostWithoutTax = energyDelivered * pricePerKWH;
 				const currentCostWithTax = currentCostWithoutTax * tax;
 				const finalAmount = Math.round(currentCostWithTax * 100) / 100;
+
+				console.log(`Session ${session.id} calculation:`, {
+					initialEnergy,
+					currentEnergy,
+					energyDelivered,
+					pricePerKWH,
+					tax,
+					currentCostWithoutTax,
+					currentCostWithTax,
+					finalAmount
+				});
 
 				// Update session status to completed
 				await updateVehicleCharging({
@@ -102,6 +114,38 @@ export const stopActiveChargingSessions = async (userId: string): Promise<boolea
 						final_reading: readings,
 					},
 				});
+
+				// Create wallet transaction for the charge payment
+				if (finalAmount > 0) {
+					try {
+						// Get user's current wallet balance from the most recent transaction
+						const { getTransactions } = await import("@/actions/transactions");
+						const recentTransactionRes = await getTransactions({
+							search: `user:${userId}`,
+							page: "1,1",
+							sort: "-created_at"
+						});
+
+						let currentBalance = 0;
+						if (!recentTransactionRes.err && recentTransactionRes.count > 0) {
+							currentBalance = Number(recentTransactionRes.result[0].total_balance) || 0;
+						}
+
+						const walletBody = {
+							user: userId,
+							amount: finalAmount,
+							total_balance: currentBalance - finalAmount,
+							date: formattedDate,
+							description: "Charge payment",
+							type: "debit",
+						};
+
+						await saveTransaction({ body: walletBody });
+						console.log(`Created wallet transaction for session ${session.id}, amount: ${finalAmount}`);
+					} catch (walletError) {
+						console.error(`Failed to create wallet transaction for session ${session.id}:`, walletError);
+					}
+				}
 
 				return true;
 			} catch (error) {

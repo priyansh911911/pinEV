@@ -9,11 +9,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
+    console.log('API: Stopping charging sessions for user:', userId);
     const result = await stopActiveChargingSessions(userId);
     
     return NextResponse.json({ 
       success: result,
-      message: result ? 'Charging sessions stopped' : 'Failed to stop some sessions'
+      message: result ? 'Charging sessions stopped and transactions created' : 'Failed to stop some sessions'
     });
   } catch (error) {
     console.error('Error in stop-charging API:', error);

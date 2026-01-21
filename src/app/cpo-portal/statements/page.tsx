@@ -26,13 +26,15 @@ interface Station {
 
 interface Transaction {
 	id: number;
-	amount: string;
-	power_consumed?: number;
+	final_amount: string;
+	final_reading?: any;
 	station: number;
-	date: string;
+	datetime: string;
 	user: number;
 	status?: string;
-	description: string;
+	duration_in_minute: number;
+	started_at: string;
+	stopped_at: string;
 }
 
 const CPOStatementsPage = () => {
@@ -69,16 +71,30 @@ const CPOStatementsPage = () => {
 				const allUsers = usersResponse.result || [];
 				console.log('Sample users:', allUsers.slice(0, 3));
 
-				// Get all transactions for CPO stations
-				const transactionsResponse = await Api.get("/transactions");
-				const allTransactions = transactionsResponse.result || [];
+				// Get all charging sessions for CPO stations
+				console.log('Fetching vehicles-chargings...');
+				try {
+					const chargingResponse = await Api.get("/vehicles-chargings");
+					console.log('Charging API Response:', chargingResponse);
+					const allChargingSessions = chargingResponse.result || chargingResponse.data || chargingResponse || [];
+					console.log('All charging sessions:', allChargingSessions.length);
+					console.log('Sample session:', allChargingSessions[0]);
+				} catch (chargingError) {
+					console.error('Error fetching vehicles-chargings:', chargingError);
+					const allChargingSessions = [];
+				}
 				
-				const cpoTransactions = allTransactions.filter((transaction: any) => {
-					const stationId = parseInt(transaction.station);
-					return userStations.some((station: Station) => station.id === stationId);
-				});
+					const cpoTransactions = allChargingSessions.filter((session: any) => {
+						const stationId = parseInt(session.station);
+						return userStations.some((station: Station) => station.id === stationId);
+					});
+					console.log('CPO transactions:', cpoTransactions.length);
 
-				setTransactions(cpoTransactions);
+					setTransactions(cpoTransactions);
+				} catch (chargingError) {
+					console.error('Error processing charging sessions:', chargingError);
+					setTransactions([]);
+				}
 			} catch (error) {
 				console.error("Error loading statements data:", error);
 			} finally {
@@ -108,13 +124,13 @@ const CPOStatementsPage = () => {
 
 	const filteredTransactions = transactions.filter(transaction => {
 		const station = stations.find(s => s.id === transaction.station);
-		const matchesSearch = station?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+		const matchesSearch = !searchQuery || station?.name?.toLowerCase().includes(searchQuery.toLowerCase());
 		
 		const matchesStation = selectedStation === "all" || 
 			(transaction.station?.toString() === selectedStation);
 		
 		// Date filtering
-		const transactionDate = new Date(transaction.date);
+		const transactionDate = new Date(transaction.datetime);
 		let matchesDate = true;
 		
 		if (dateFilter === "daily") {
@@ -135,8 +151,14 @@ const CPOStatementsPage = () => {
 		return matchesSearch && matchesStation && matchesDate;
 	});
 
-	const totalRevenue = filteredTransactions.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
-	const totalEnergy = filteredTransactions.reduce((sum, t) => sum + (t.power_consumed || 0), 0);
+	const totalRevenue = filteredTransactions.reduce((sum, t) => sum + parseFloat(t.final_amount || '0'), 0);
+	const totalEnergy = filteredTransactions.reduce((sum, t) => {
+		const voltage = parseFloat(t.final_reading?.voltage || 0);
+		const current = parseFloat(t.final_reading?.current || 0);
+		const durationHours = parseFloat(t.duration_in_minute || 0) / 60;
+		const energyKWh = (voltage * current * durationHours) / 1000;
+		return sum + energyKWh;
+	}, 0);
 
 	if (isLoading) {
 		return (
@@ -186,10 +208,10 @@ const CPOStatementsPage = () => {
 
 						<Card>
 							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium">Total Energy Sold</CardTitle>
+								<CardTitle className="text-sm font-medium">Total Power</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">{totalEnergy.toFixed(2)} kWh</div>
+								<div className="text-2xl font-bold">{totalEnergy.toFixed(2)} kW</div>
 							</CardContent>
 						</Card>
 
@@ -291,17 +313,17 @@ const CPOStatementsPage = () => {
 												<p className="font-medium">{transaction.user}</p>
 											</div>
 											<div>
-												<p className="text-sm text-muted-foreground">Energy</p>
-												<p className="font-medium">{transaction.power_consumed?.toFixed(2) || '0'} kWh</p>
+												<p className="text-sm text-muted-foreground">Power</p>
+												<p className="font-medium">{parseFloat(transaction.final_reading?.power || '0').toFixed(2)} kW</p>
 											</div>
 											<div>
 												<p className="text-sm text-muted-foreground">Amount</p>
-												<p className="font-medium text-green-600">₹{parseFloat(transaction.amount || '0').toFixed(2)}</p>
+												<p className="font-medium text-green-600">₹{parseFloat(transaction.final_amount || '0').toFixed(2)}</p>
 											</div>
 											<div>
 												<p className="text-sm text-muted-foreground">Date & Time</p>
 												<p className="font-medium">
-													{format(new Date(transaction.date), "dd MMM yyyy, HH:mm")}
+													{format(new Date(transaction.datetime), "dd MMM yyyy, HH:mm")}
 												</p>
 											</div>
 										</div>

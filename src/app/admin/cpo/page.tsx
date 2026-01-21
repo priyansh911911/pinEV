@@ -56,7 +56,7 @@ const CPODashboard = () => {
 		setIsLoading(true);
 		try {
 			const stationsRes = await StationActions.getStations({});
-		const transactionsRes = await Api.get("/transactions");
+		const transactionsRes = await Api.get("/vehicles-chargings");
 
 		if (!stationsRes.err && !transactionsRes.err) {
 			const allStations = stationsRes.result || [];
@@ -78,12 +78,16 @@ const CPODashboard = () => {
 					);
 
 					const powerUsage = stationTxns.reduce(
-						(sum: number, t: any) => sum + (parseFloat(t.power_consumed) || 0),
+						(sum: number, t: any) => {
+							const voltage = parseFloat(t.final_reading?.voltage || 0);
+							const current = parseFloat(t.final_reading?.current || 0);
+							return sum + ((current * voltage) / 1000);
+						},
 						0
 					);
 
 					const totalCost = stationTxns.reduce(
-						(sum: number, t: any) => sum + (parseFloat(t.amount) || 0),
+						(sum: number, t: any) => sum + (parseFloat(t.final_amount) || 0),
 						0
 					);
 
@@ -164,22 +168,22 @@ const CPODashboard = () => {
 		
 		switch (dateFilter) {
 			case "today":
-				return allTransactions.filter(t => {
-					const txDate = new Date(t.date);
-					return txDate >= today;
-				});
+					return allTransactions.filter(t => {
+						const txDate = new Date(t.datetime);
+						return txDate >= today;
+					});
 			case "week":
 				const weekAgo = new Date(today);
 				weekAgo.setDate(weekAgo.getDate() - 7);
 				return allTransactions.filter(t => {
-					const txDate = new Date(t.date);
+					const txDate = new Date(t.datetime);
 					return txDate >= weekAgo;
 				});
 			case "month":
 				const monthAgo = new Date(today);
 				monthAgo.setMonth(monthAgo.getMonth() - 1);
 				return allTransactions.filter(t => {
-					const txDate = new Date(t.date);
+					const txDate = new Date(t.datetime);
 					return txDate >= monthAgo;
 				});
 			case "custom":
@@ -188,7 +192,7 @@ const CPODashboard = () => {
 				const endDate = new Date(customDateRange.end);
 				endDate.setHours(23, 59, 59, 999);
 				return allTransactions.filter(t => {
-					const txDate = new Date(t.date);
+					const txDate = new Date(t.datetime);
 					return txDate >= startDate && txDate <= endDate;
 				});
 			default:
@@ -380,10 +384,10 @@ const CPODashboard = () => {
 									</Card>
 									<Card>
 										<CardHeader className="pb-2">
-											<CardTitle className="text-sm font-medium">Total Energy Sold</CardTitle>
+											<CardTitle className="text-sm font-medium">Total Power Sold</CardTitle>
 										</CardHeader>
 										<CardContent>
-											<div className="text-2xl font-bold">{filteredTransactions.reduce((sum, t) => sum + (parseFloat(t.power_consumed) || 0), 0).toFixed(2)} kWh</div>
+											<div className="text-2xl font-bold">{filteredTransactions.reduce((sum, t) => sum + ((parseFloat(t.final_reading?.current) || 0) * (parseFloat(t.final_reading?.voltage) || 0) / 1000), 0).toFixed(2)} kW</div>
 										</CardContent>
 									</Card>
 									<Card>
@@ -391,13 +395,13 @@ const CPODashboard = () => {
 											<CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
 										</CardHeader>
 										<CardContent>
-											<div className="text-2xl font-bold">₹{filteredTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0).toFixed(2)}</div>
+											<div className="text-2xl font-bold">₹{filteredTransactions.reduce((sum, t) => sum + (parseFloat(t.final_amount) || 0), 0).toFixed(2)}</div>
 										</CardContent>
 									</Card>
 								</div>
 								<div className="space-y-4">
 									<h2 className="text-xl font-semibold">Transaction History</h2>
-									{filteredTransactions.map((transaction) => {
+									{filteredTransactions.sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()).map((transaction) => {
 										const station = stations.find(s => s.id === parseInt(transaction.station));
 										return (
 											<Card key={transaction.id}>
@@ -411,22 +415,29 @@ const CPODashboard = () => {
 														</div>
 														<Badge variant="default">completed</Badge>
 													</div>
-													<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+													<div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-3">
 														<div>
 															<p className="text-sm text-muted-foreground">Customer ID</p>
 															<p className="font-medium">{transaction.user}</p>
 														</div>
 														<div>
-															<p className="text-sm text-muted-foreground">Energy</p>
-															<p className="font-medium">{(parseFloat(transaction.power_consumed) || 0).toFixed(2)} kWh</p>
+															<p className="text-sm text-muted-foreground">Power</p>
+															<p className="font-medium">{((parseFloat(transaction.final_reading?.current) || 0) * (parseFloat(transaction.final_reading?.voltage) || 0) / 1000).toFixed(2)} kW</p>
 														</div>
 														<div>
 															<p className="text-sm text-muted-foreground">Amount</p>
-															<p className="font-medium text-green-600">₹{parseFloat(transaction.amount || '0').toFixed(2)}</p>
+															<p className="font-medium text-green-600">₹{parseFloat(transaction.final_amount || '0').toFixed(2)}</p>
 														</div>
 														<div>
 															<p className="text-sm text-muted-foreground">Date & Time</p>
-															<p className="font-medium">{new Date(transaction.date).toLocaleDateString()}</p>
+															<p className="font-medium">{new Date(transaction.datetime).toLocaleDateString()}</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Session Time</p>
+															<div className="text-xs">
+																<p>Started: {transaction.started_at ? new Date(transaction.started_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</p>
+																<p>Stopped: {transaction.stopped_at ? new Date(transaction.stopped_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</p>
+															</div>
 														</div>
 													</div>
 													<div className="flex justify-between items-center pt-3 border-t">
