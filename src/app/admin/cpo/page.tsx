@@ -42,7 +42,9 @@ const CPODashboard = () => {
 	const [stations, setStations] = useState<StationData[]>([]);
 	const [cpoProfiles, setCpoProfiles] = useState<CPOData[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [viewMode, setViewMode] = useState<"stations" | "cpo" | "statements">("cpo");
+	const [viewMode, setViewMode] = useState<"stations" | "cpo" | "statements" | "cpo-statements" | "station-statements">("cpo");
+	const [selectedCPO, setSelectedCPO] = useState<CPOData | null>(null);
+	const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
 	const [editingId, setEditingId] = useState<number | null>(null);
 	const [editName, setEditName] = useState("");
 	const [editPhone, setEditPhone] = useState("");
@@ -202,6 +204,93 @@ const CPODashboard = () => {
 
 	const filteredTransactions = getFilteredTransactions();
 
+	const getCPOTransactions = (cpo: CPOData) => {
+		const cpoStationIds = cpo.stations.map(s => s.id);
+		return allTransactions.filter(t => cpoStationIds.includes(parseInt(t.station)));
+	};
+
+	const getFilteredCPOTransactions = (cpo: CPOData) => {
+		const cpoTransactions = getCPOTransactions(cpo);
+		const now = new Date();
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		
+		switch (dateFilter) {
+			case "today":
+				return cpoTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= today;
+				});
+			case "week":
+				const weekAgo = new Date(today);
+				weekAgo.setDate(weekAgo.getDate() - 7);
+				return cpoTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= weekAgo;
+				});
+			case "month":
+				const monthAgo = new Date(today);
+				monthAgo.setMonth(monthAgo.getMonth() - 1);
+				return cpoTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= monthAgo;
+				});
+			case "custom":
+				if (!customDateRange.start || !customDateRange.end) return cpoTransactions;
+				const startDate = new Date(customDateRange.start);
+				const endDate = new Date(customDateRange.end);
+				endDate.setHours(23, 59, 59, 999);
+				return cpoTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= startDate && txDate <= endDate;
+				});
+			default:
+				return cpoTransactions;
+		}
+	};
+
+	const getStationTransactions = (station: StationData) => {
+		return allTransactions.filter(t => parseInt(t.station) === station.id);
+	};
+
+	const getFilteredStationTransactions = (station: StationData) => {
+		const stationTransactions = getStationTransactions(station);
+		const now = new Date();
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		
+		switch (dateFilter) {
+			case "today":
+				return stationTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= today;
+				});
+			case "week":
+				const weekAgo = new Date(today);
+				weekAgo.setDate(weekAgo.getDate() - 7);
+				return stationTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= weekAgo;
+				});
+			case "month":
+				const monthAgo = new Date(today);
+				monthAgo.setMonth(monthAgo.getMonth() - 1);
+				return stationTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= monthAgo;
+				});
+			case "custom":
+				if (!customDateRange.start || !customDateRange.end) return stationTransactions;
+				const startDate = new Date(customDateRange.start);
+				const endDate = new Date(customDateRange.end);
+				endDate.setHours(23, 59, 59, 999);
+				return stationTransactions.filter(t => {
+					const txDate = new Date(t.datetime);
+					return txDate >= startDate && txDate <= endDate;
+				});
+			default:
+				return stationTransactions;
+		}
+	};
+
 	const handleSaveAssignment = async (stationId: number) => {
 		if (!editEmail || !editName) {
 			toast.error("Email and Name are required");
@@ -314,6 +403,299 @@ const CPODashboard = () => {
 							</div>
 						)}
 
+						{viewMode === "station-statements" && selectedStation && (
+							<div className="space-y-6">
+								<div className="flex items-center gap-2 mb-4">
+									<Button 
+										variant="outline" 
+										size="sm" 
+										onClick={() => setViewMode("stations")}
+									>
+										← Back to All Stations
+									</Button>
+									<h3 className="text-lg font-semibold">{selectedStation.name} - Statements</h3>
+								</div>
+								<div className="flex flex-col sm:flex-row gap-4 mb-6">
+									<div className="flex gap-2 flex-wrap">
+										<Button 
+											variant={dateFilter === "all" ? "default" : "outline"}
+											onClick={() => setDateFilter("all")}
+											size="sm"
+										>
+											All Time
+										</Button>
+										<Button 
+											variant={dateFilter === "today" ? "default" : "outline"}
+											onClick={() => setDateFilter("today")}
+											size="sm"
+										>
+											Today
+										</Button>
+										<Button 
+											variant={dateFilter === "week" ? "default" : "outline"}
+											onClick={() => setDateFilter("week")}
+											size="sm"
+										>
+											This Week
+										</Button>
+										<Button 
+											variant={dateFilter === "month" ? "default" : "outline"}
+											onClick={() => setDateFilter("month")}
+											size="sm"
+										>
+											This Month
+										</Button>
+										<Button 
+											variant={dateFilter === "custom" ? "default" : "outline"}
+											onClick={() => setDateFilter("custom")}
+											size="sm"
+										>
+											Custom Range
+										</Button>
+									</div>
+									{dateFilter === "custom" && (
+										<div className="flex gap-2">
+											<Input 
+												type="date" 
+												value={customDateRange.start}
+												onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+												placeholder="Start Date"
+												className="w-40"
+											/>
+											<Input 
+												type="date" 
+												value={customDateRange.end}
+												onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+												placeholder="End Date"
+												className="w-40"
+											/>
+										</div>
+									)}
+								</div>
+								<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">{getFilteredStationTransactions(selectedStation).length}</div>
+										</CardContent>
+									</Card>
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Power Sold</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">{getFilteredStationTransactions(selectedStation).reduce((sum, t) => sum + ((parseFloat(t.final_reading?.current) || 0) * (parseFloat(t.final_reading?.voltage) || 0) / 1000), 0).toFixed(2)} kW</div>
+										</CardContent>
+									</Card>
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">₹{getFilteredStationTransactions(selectedStation).reduce((sum, t) => sum + (parseFloat(t.final_amount) || 0), 0).toFixed(2)}</div>
+										</CardContent>
+									</Card>
+								</div>
+								<div className="space-y-4">
+									<h2 className="text-xl font-semibold">Transaction History</h2>
+									{getFilteredStationTransactions(selectedStation).sort((a, b) => new Date(b.stopped_at || b.datetime).getTime() - new Date(a.stopped_at || a.datetime).getTime()).map((transaction) => (
+										<Card key={transaction.id}>
+											<CardContent className="p-4">
+												<div className="flex justify-between items-start mb-3">
+													<div>
+														<h3 className="font-semibold">{selectedStation.name}</h3>
+														<p className="text-sm text-muted-foreground">
+															{selectedStation.address} • Code: {selectedStation.code}
+														</p>
+													</div>
+													<Badge variant="default">completed</Badge>
+												</div>
+												<div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-3">
+													<div>
+														<p className="text-sm text-muted-foreground">Customer ID</p>
+														<p className="font-medium">{transaction.user}</p>
+													</div>
+													<div>
+														<p className="text-sm text-muted-foreground">Power</p>
+														<p className="font-medium">{((parseFloat(transaction.final_reading?.current) || 0) * (parseFloat(transaction.final_reading?.voltage) || 0) / 1000).toFixed(2)} kW</p>
+													</div>
+													<div>
+														<p className="text-sm text-muted-foreground">Amount</p>
+														<p className="font-medium text-green-600">₹{parseFloat(transaction.final_amount || '0').toFixed(2)}</p>
+													</div>
+													<div>
+														<p className="text-sm text-muted-foreground">Date & Time</p>
+														<p className="font-medium">{new Date(transaction.datetime).toLocaleString()}</p>
+													</div>
+													<div>
+														<p className="text-sm text-muted-foreground">Session Time</p>
+														<div className="text-xs">
+															<p>Started: {transaction.started_at ? new Date(transaction.started_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</p>
+															<p>Stopped: {transaction.stopped_at ? new Date(transaction.stopped_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</p>
+														</div>
+													</div>
+												</div>
+												<div className="flex justify-between items-center pt-3 border-t">
+													<div className="text-sm text-muted-foreground">Transaction ID: #{transaction.id}</div>
+													<div className="text-sm">Rate: ₹{selectedStation.price_per_kwh || 0}/kWh</div>
+												</div>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</div>
+						)}
+
+						{viewMode === "cpo-statements" && selectedCPO && (
+							<div className="space-y-6">
+								<div className="flex items-center gap-2 mb-4">
+									<Button 
+										variant="outline" 
+										size="sm" 
+										onClick={() => setViewMode("cpo")}
+									>
+										← Back to CPO Profiles
+									</Button>
+									<h3 className="text-lg font-semibold">{selectedCPO.name} - Statements</h3>
+								</div>
+								<div className="flex flex-col sm:flex-row gap-4 mb-6">
+									<div className="flex gap-2 flex-wrap">
+										<Button 
+											variant={dateFilter === "all" ? "default" : "outline"}
+											onClick={() => setDateFilter("all")}
+											size="sm"
+										>
+											All Time
+										</Button>
+										<Button 
+											variant={dateFilter === "today" ? "default" : "outline"}
+											onClick={() => setDateFilter("today")}
+											size="sm"
+										>
+											Today
+										</Button>
+										<Button 
+											variant={dateFilter === "week" ? "default" : "outline"}
+											onClick={() => setDateFilter("week")}
+											size="sm"
+										>
+											This Week
+										</Button>
+										<Button 
+											variant={dateFilter === "month" ? "default" : "outline"}
+											onClick={() => setDateFilter("month")}
+											size="sm"
+										>
+											This Month
+										</Button>
+										<Button 
+											variant={dateFilter === "custom" ? "default" : "outline"}
+											onClick={() => setDateFilter("custom")}
+											size="sm"
+										>
+											Custom Range
+										</Button>
+									</div>
+									{dateFilter === "custom" && (
+										<div className="flex gap-2">
+											<Input 
+												type="date" 
+												value={customDateRange.start}
+												onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+												placeholder="Start Date"
+												className="w-40"
+											/>
+											<Input 
+												type="date" 
+												value={customDateRange.end}
+												onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+												placeholder="End Date"
+												className="w-40"
+											/>
+										</div>
+									)}
+								</div>
+								<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">{getFilteredCPOTransactions(selectedCPO).length}</div>
+										</CardContent>
+									</Card>
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Power Sold</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">{getFilteredCPOTransactions(selectedCPO).reduce((sum, t) => sum + ((parseFloat(t.final_reading?.current) || 0) * (parseFloat(t.final_reading?.voltage) || 0) / 1000), 0).toFixed(2)} kW</div>
+										</CardContent>
+									</Card>
+									<Card>
+										<CardHeader className="pb-2">
+											<CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="text-2xl font-bold">₹{getFilteredCPOTransactions(selectedCPO).reduce((sum, t) => sum + (parseFloat(t.final_amount) || 0), 0).toFixed(2)}</div>
+										</CardContent>
+									</Card>
+								</div>
+								<div className="space-y-4">
+									<h2 className="text-xl font-semibold">Transaction History</h2>
+									{getFilteredCPOTransactions(selectedCPO).sort((a, b) => new Date(b.stopped_at || b.datetime).getTime() - new Date(a.stopped_at || a.datetime).getTime()).map((transaction) => {
+										const station = stations.find(s => s.id === parseInt(transaction.station));
+										return (
+											<Card key={transaction.id}>
+												<CardContent className="p-4">
+													<div className="flex justify-between items-start mb-3">
+														<div>
+															<h3 className="font-semibold">{station?.name || 'Unknown Station'}</h3>
+															<p className="text-sm text-muted-foreground">
+																{station?.address} • Code: {station?.code}
+															</p>
+														</div>
+														<Badge variant="default">completed</Badge>
+													</div>
+													<div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-3">
+														<div>
+															<p className="text-sm text-muted-foreground">Customer ID</p>
+															<p className="font-medium">{transaction.user}</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Power</p>
+															<p className="font-medium">{((parseFloat(transaction.final_reading?.current) || 0) * (parseFloat(transaction.final_reading?.voltage) || 0) / 1000).toFixed(2)} kW</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Amount</p>
+															<p className="font-medium text-green-600">₹{parseFloat(transaction.final_amount || '0').toFixed(2)}</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Date & Time</p>
+															<p className="font-medium">{new Date(transaction.datetime).toLocaleString()}</p>
+														</div>
+														<div>
+															<p className="text-sm text-muted-foreground">Session Time</p>
+															<div className="text-xs">
+																<p>Started: {transaction.started_at ? new Date(transaction.started_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</p>
+																<p>Stopped: {transaction.stopped_at ? new Date(transaction.stopped_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</p>
+															</div>
+														</div>
+													</div>
+													<div className="flex justify-between items-center pt-3 border-t">
+														<div className="text-sm text-muted-foreground">Transaction ID: #{transaction.id}</div>
+														<div className="text-sm">Rate: ₹{station?.price_per_kwh || 0}/kWh</div>
+													</div>
+												</CardContent>
+											</Card>
+										);
+									})}
+								</div>
+							</div>
+						)}
+
 						{viewMode === "statements" && (
 							<div className="space-y-6">
 								<div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -401,7 +783,7 @@ const CPODashboard = () => {
 								</div>
 								<div className="space-y-4">
 									<h2 className="text-xl font-semibold">Transaction History</h2>
-									{filteredTransactions.sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()).map((transaction) => {
+									{filteredTransactions.sort((a, b) => new Date(b.stopped_at || b.datetime).getTime() - new Date(a.stopped_at || a.datetime).getTime()).map((transaction) => {
 										const station = stations.find(s => s.id === parseInt(transaction.station));
 										return (
 											<Card key={transaction.id}>
@@ -430,7 +812,7 @@ const CPODashboard = () => {
 														</div>
 														<div>
 															<p className="text-sm text-muted-foreground">Date & Time</p>
-															<p className="font-medium">{new Date(transaction.datetime).toLocaleDateString()}</p>
+															<p className="font-medium">{new Date(transaction.datetime).toLocaleString()}</p>
 														</div>
 														<div>
 															<p className="text-sm text-muted-foreground">Session Time</p>
@@ -456,7 +838,10 @@ const CPODashboard = () => {
 							<div className="space-y-4">
 								<h2 className="text-lg font-semibold">CPO Profiles</h2>
 								{cpoProfiles.map((cpo) => (
-									<Card key={cpo.id}>
+									<Card key={cpo.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
+										setSelectedCPO(cpo);
+										setViewMode("cpo-statements");
+									}}>
 										<CardHeader>
 											<div className="flex justify-between items-start">
 												<div>
@@ -504,7 +889,10 @@ const CPODashboard = () => {
 							<div className="space-y-4">
 								<h2 className="text-lg font-semibold">All Stations</h2>
 								{stations.map((station) => (
-									<Card key={station.id}>
+									<Card key={station.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
+										setSelectedStation(station);
+										setViewMode("station-statements");
+									}}>
 										<CardHeader>
 											<div className="flex justify-between items-start">
 												<div>
