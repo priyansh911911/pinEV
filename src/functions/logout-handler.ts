@@ -115,36 +115,37 @@ export const stopActiveChargingSessions = async (userId: string): Promise<boolea
 					},
 				});
 
-				// Create wallet transaction for the charge payment
-				if (finalAmount > 0) {
-					try {
-						// Get user's current wallet balance from the most recent transaction
-						const { getTransactions } = await import("@/actions/transactions");
-						const recentTransactionRes = await getTransactions({
-							search: `user:${userId}`,
-							page: "1,1",
-							sort: "-created_at"
-						});
+				// Create wallet transaction for audit trail
+				try {
+					// Get user's current wallet balance from the most recent transaction
+					const { getTransactions } = await import("@/actions/transactions");
+					const recentTransactionRes = await getTransactions({
+						search: `user:${userId}`,
+						page: "1,1",
+						sort: "-created_at"
+					});
 
-						let currentBalance = 0;
-						if (!recentTransactionRes.err && recentTransactionRes.count > 0) {
-							currentBalance = Number(recentTransactionRes.result[0].total_balance) || 0;
-						}
-
-						const walletBody = {
-							user: userId,
-							amount: finalAmount,
-							total_balance: currentBalance - finalAmount,
-							date: formattedDate,
-							description: "Charge payment",
-							type: "debit",
-						};
-
-						await saveTransaction({ body: walletBody });
-						console.log(`Created wallet transaction for session ${session.id}, amount: ${finalAmount}`);
-					} catch (walletError) {
-						console.error(`Failed to create wallet transaction for session ${session.id}:`, walletError);
+					let currentBalance = 0;
+					if (!recentTransactionRes.err && recentTransactionRes.count > 0) {
+						currentBalance = Number(recentTransactionRes.result[0].total_balance) || 0;
 					}
+
+					// Only deduct money if there's an actual charge
+					const newBalance = finalAmount > 0 ? currentBalance - finalAmount : currentBalance;
+
+					const walletBody = {
+						user: userId,
+						amount: finalAmount,
+						total_balance: newBalance,
+						date: formattedDate,
+						description: finalAmount > 0 ? "Charge payment" : "Charging session (no consumption)",
+						type: "debit",
+					};
+
+					await saveTransaction({ body: walletBody });
+					console.log(`Created wallet transaction for session ${session.id}, amount: ${finalAmount}`);
+				} catch (walletError) {
+					console.error(`Failed to create wallet transaction for session ${session.id}:`, walletError);
 				}
 
 				return true;
