@@ -32,25 +32,8 @@ export const useLogoutHandler = () => {
 			}
 		};
 
-		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-			// Use sendBeacon for more reliable delivery when page is unloading
-			if (navigator.sendBeacon) {
-				// This is a fire-and-forget approach for page unload
-				navigator.sendBeacon('/api/stop-charging', JSON.stringify({ userId: String(user.id) }));
-			} else {
-				// Fallback for browsers that don't support sendBeacon
-				stopSessionsWithCooldown();
-			}
-		};
-
-
-
-		// Add event listeners
-		window.addEventListener('beforeunload', handleBeforeUnload);
-
 		// Cleanup event listeners
 		return () => {
-			window.removeEventListener('beforeunload', handleBeforeUnload);
 			stopHeartbeat();
 		};
 	}, [user?.id, isLoggedin]);

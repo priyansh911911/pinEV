@@ -8,6 +8,7 @@ import Script from "next/script";
 import NativeActions from "@/components/custom/native-actions";
 import GetLocation from "@/components/custom/get-location";
 import LogoutHandler from "@/components/custom/logout-handler";
+import SessionMonitor from "@/components/custom/session-monitor";
 
 const fontSans = Manrope({
 	subsets: ["latin"],
@@ -82,6 +83,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 					<GetLocation />
 					<NativeActions />
 					<LogoutHandler />
+					<SessionMonitor />
 				</Providers>
 
 				<Script src={`https://maps.googleapis.com/maps/api/js?key=${googleAPI}&libraries=places`}></Script>
