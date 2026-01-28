@@ -71,6 +71,7 @@
 	* {
 		@apply border-border;
 	}
+
 	body {
 		@apply bg-background text-foreground;
 	}
@@ -139,8 +140,10 @@
 
 	/* Hide scrollbar for IE, Edge, and Firefox */
 	.scrollbar-hide {
-		-ms-overflow-style: none; /* IE and Edge */
-		scrollbar-width: none; /* Firefox */
+		-ms-overflow-style: none;
+		/* IE and Edge */
+		scrollbar-width: none;
+		/* Firefox */
 	}
 
 	* {
@@ -195,10 +198,11 @@
 
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+	* {
+		@apply border-border outline-ring/50;
 	}
-  body {
-    @apply bg-background text-foreground;
+
+	body {
+		@apply bg-background text-foreground;
 	}
 }

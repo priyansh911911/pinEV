@@ -1,7 +1,7 @@
 export const OTP_LENGTH = 4;
 
 export const FILTERS = ["Distance", "Vehicle", "Amenities", "Time", "Rating"];
-export const TEST_EMAILS = ["ssasahil000@gmail.com", "arodos.tech@gmail.com", "sreejindam@gmail.com"];
+export const TEST_EMAILS = ["ssasahil000@gmail.com", "arodos.tech@gmail.com"];
 
 export const DEFAULT_LAT_LNG = { lat: 26.2006, lng: 92.9376 };
 export const STATION_LAT_LNGS = [
