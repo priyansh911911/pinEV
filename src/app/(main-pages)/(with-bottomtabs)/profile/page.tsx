@@ -84,12 +84,12 @@ const HeaderDrawer = ({ user }: { user: User }) => {
 						))}
 					</div>
 				</div>
-				<DrawerFooter>
+				<DrawerFooter className="pb-20">
 					{isLoggedin ? (
 						<Button
 							onClick={() => {
 								setIsLoggingOut(true);
-								
+
 								// Stop charging sessions and logout
 								if (user?.id) {
 									stopActiveChargingSessions(String(user.id)).catch(console.error);
