@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { getStations } from "@/actions/stations";
+import EditStationModal from "@/components/custom/manage-station/edit-station-modal";
 import { toast } from "sonner";
 import { getStationsSlots, updateStationsSlots } from "@/actions/stations-slots";
 import { API_URL, getSlotStatus, getUnusedConnectorId, toggleCharging } from "@/functions/charging";
@@ -50,6 +51,7 @@ const Component = () => {
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [stationsSlots, setStationsSlots] = useState<StationSlot[]>([]);
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
 	const handleGetStation = useCallback(async () => {
 		if (!id) {
@@ -153,14 +155,14 @@ const Component = () => {
 						>
 							<Icons.RefreshCcwIcon className="h-5 w-5" />
 						</Button>
-						{/* <Button
-							variant="outline"
-							size="sm"
-							className="gap-2"
-							onClick={() => router.push(`/admin/stations/edit?id=${id}`)}
+						<Button
+							variant="ghost"
+							size="icon"
+							className="text-muted-foreground hover:text-foreground"
+							onClick={() => setIsEditModalOpen(true)}
 						>
-							<Icons.EditIcon className="h-4 w-4" /> Edit Station
-						</Button> */}
+							<Icons.EditIcon className="h-5 w-5" />
+						</Button>
 					</div>
 				}
 				headerBackground="bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10"
@@ -175,8 +177,14 @@ const Component = () => {
 					<Card>
 						<CardHeader className="pb-4">
 							<div className="flex items-start justify-between">
-								<div className="space-y-1.5">
-									<CardTitle className="text-2xl">{station.name}</CardTitle>
+								<div className="space-y-1.5 flex-1 mr-4">
+									<div
+										className="flex items-center gap-2 group cursor-pointer"
+										onClick={() => setIsEditModalOpen(true)}
+									>
+										<CardTitle className="text-2xl">{station.name}</CardTitle>
+										<Icons.EditIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+									</div>
 									<CardDescription className="flex items-center gap-2">
 										<span>ID: {station.code}</span>
 										<span className="text-muted-foreground/30">•</span>
@@ -191,27 +199,54 @@ const Component = () => {
 						</CardHeader>
 
 						<CardContent className="grid gap-6">
-							<div className="flex items-center gap-4 rounded-lg border p-4 bg-muted/5">
-								<Icons.MapPinIcon className="h-5 w-5 text-primary" />
-								<div>
-									<p className="font-medium">Location</p>
+							<div className="flex items-center gap-4 rounded-lg border p-4 bg-muted/5 relative group cursor-pointer" onClick={() => setIsEditModalOpen(true)}>
+								<Icons.MapPinIcon className="h-5 w-5 text-primary shrink-0" />
+								<div className="flex-1">
+									<div className="flex items-center justify-between">
+										<p className="font-medium text-sm">Location</p>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+										>
+											<Icons.EditIcon className="h-3 w-3" />
+										</Button>
+									</div>
 									<p className="text-sm text-muted-foreground mt-1">{station.address}</p>
 								</div>
 							</div>
 
 							<div className="grid gap-4 md:grid-cols-2">
-								<div className="flex items-center gap-4 rounded-lg border p-4 bg-muted/5">
-									<Icons.PhoneIcon className="h-5 w-5 text-primary" />
-									<div>
-										<p className="font-medium">Phone</p>
+								<div className="flex items-center gap-4 rounded-lg border p-4 bg-muted/5 relative group cursor-pointer" onClick={() => setIsEditModalOpen(true)}>
+									<Icons.PhoneIcon className="h-5 w-5 text-primary shrink-0" />
+									<div className="flex-1">
+										<div className="flex items-center justify-between">
+											<p className="font-medium text-sm">Phone</p>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+											>
+												<Icons.EditIcon className="h-3 w-3" />
+											</Button>
+										</div>
 										<p className="text-sm text-muted-foreground mt-1">{station.details.phone}</p>
 									</div>
 								</div>
 
-								<div className="flex items-center gap-4 rounded-lg border p-4 bg-muted/5">
-									<Icons.MailIcon className="h-5 w-5 text-primary" />
-									<div>
-										<p className="font-medium">Email</p>
+								<div className="flex items-center gap-4 rounded-lg border p-4 bg-muted/5 relative group cursor-pointer" onClick={() => setIsEditModalOpen(true)}>
+									<Icons.MailIcon className="h-5 w-5 text-primary shrink-0" />
+									<div className="flex-1">
+										<div className="flex items-center justify-between">
+											<p className="font-medium text-sm">Email</p>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+											>
+												<Icons.EditIcon className="h-3 w-3" />
+											</Button>
+										</div>
 										<p className="text-sm text-muted-foreground mt-1">{station.details.email}</p>
 									</div>
 								</div>
@@ -250,6 +285,13 @@ const Component = () => {
 					</Card>
 				</div>
 			</Layout>
+
+			<EditStationModal
+				open={isEditModalOpen}
+				onOpenChange={setIsEditModalOpen}
+				station={station}
+				onSuccess={handleGetStation}
+			/>
 		</>
 	);
 };
