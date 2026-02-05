@@ -2,35 +2,35 @@ import axios from "axios";
 import { toast } from "sonner";
 
 type SendEmailProps = {
-	sendTo: { name: string; email: string }[];
-	subject: string;
-	htmlPart: string;
+    sendTo: { name: string; email: string }[];
+    subject: string;
+    htmlPart: string;
 };
 
 export async function sendEmail(props: SendEmailProps) {
-	const { sendTo, subject, htmlPart } = props;
+    const { sendTo, subject, htmlPart } = props;
 
-	const body = {
-		from: {
-			name: "PIN EV",
-			email: "noreply@arodos.com",
-		},
-		to: sendTo,
-		subject: subject,
-		htmlpart: htmlPart,
-	};
+    const body = {
+        from: {
+            name: "PIN EV",
+            email: "noreply@arodos.com",
+        },
+        to: sendTo,
+        subject: subject,
+        htmlpart: htmlPart,
+    };
 
-	try {
-		const res = await axios.post("https://send-email-api-v2.backendservices.in", body);
+    try {
+        const res = await axios.post("https://send-email-api-v4.backendservices.in", body);
 
-		return res.data;
-	} catch (error) {
-		toast.error("Could not send email");
-	}
+        return res.data;
+    } catch (error) {
+        toast.error("Could not send email");
+    }
 }
 
 export const getOTPEmailTemplate = (otp: string) => {
-	return `
+    return `
     <div style="
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
