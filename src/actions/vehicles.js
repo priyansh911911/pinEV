@@ -1,18 +1,19 @@
 import Api from "../apis/Api";
 
-export async function getVehicles({ search = "", page = "", sort = "" } = {}) {
+export async function getVehicles({ search = "", page = "", sort = "", filter = "" } = {}) {
 	try {
 		const response = await Api.get("/vehicles", {
 			search: search,
 			page: page,
 			sort: sort || "-created_at",
-			filter: "is_deleted:0",
+			filter: filter ? `is_deleted:0,${filter}` : "is_deleted:0",
 		});
 		return response;
 	} catch (error) {
 		console.log(error);
 	}
 }
+
 
 export async function createVehicle({ body }) {
 	try {

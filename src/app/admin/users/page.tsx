@@ -39,7 +39,7 @@ const UsersPage = () => {
 					) : (
 						<div className="space-y-3">
 							{users.map((user: any) => (
-								<Card key={user.id} className="cursor-pointer" onClick={() => window.location.href = `/admin/users/${user.id}`}>
+								<Card key={user.id} className="cursor-pointer" onClick={() => window.location.href = `/admin/users/view/?id=${user.id}`}>
 									<CardContent className="p-4">
 										<div className="flex flex-col">
 											<h3 className="font-semibold">{user.name}</h3>

@@ -1,6 +1,6 @@
 import Api from "../apis/Api";
 
-export async function getVehiclesChargings({ search = "", page = "", sort = "", joins = "" } = {}) {
+export async function getVehiclesChargings({ search = "", page = "", sort = "", joins = "", filter = "" } = {}) {
 	const options = {
 		sort: sort || "-created_at",
 	};
@@ -9,6 +9,7 @@ export async function getVehiclesChargings({ search = "", page = "", sort = "", 
 	if (page) options.page = page;
 	if (sort) options.sort = sort;
 	if (joins) options.joins = joins;
+	if (filter) options.filter = filter;
 
 	try {
 		const response = await Api.get("/vehicles-chargings", options);

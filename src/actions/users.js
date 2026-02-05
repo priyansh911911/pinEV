@@ -55,3 +55,12 @@ export async function updateUser(props) {
 		console.log(error);
 	}
 }
+
+export async function getUserById(id) {
+	try {
+		const response = await Api.get(`/users/${id}`);
+		return response;
+	} catch (error) {
+		console.log(error);
+	}
+}
