@@ -65,6 +65,7 @@ const HeaderDrawer = ({ user }: { user: User }) => {
 					<div className="space-y-4">
 						{[
 							// ...(isLoggedin ? [{ icon: <Icons.WalletIcon />, label: "Wallet", href: "/wallet" }] : []),
+							{ icon: <Icons.HelpCircleIcon />, label: "Help & Support", href: "/support" },
 							{ icon: <Icons.ShieldIcon />, label: "Privacy Policy", href: "/privacy" },
 							{ icon: <Icons.RefreshCcwIcon />, label: "Refund Policy", href: "/refund-policy" },
 							// { icon: <Icons.StoreIcon />, label: "CPO Login", href: "/cpo-portal/login" }, // TODO: Uncomment when needed

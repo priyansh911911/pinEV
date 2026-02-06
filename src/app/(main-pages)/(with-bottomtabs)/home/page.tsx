@@ -117,12 +117,12 @@ const HomePage = () => {
 				// }
 				right={
 					<Button
-						onClick={() => router.push("notifications")}
+						onClick={() => router.push("/support")}
 						variant="secondary"
 						size="icon"
-						className="rounded-full text-foreground"
+						className="rounded-full text-primary"
 					>
-						<Icons.BellIcon />
+						<Icons.HelpCircleIcon />
 					</Button>
 				}
 				headerBackground="bg-gradient-to-b from-background to-transparent"
