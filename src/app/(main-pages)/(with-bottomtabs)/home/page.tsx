@@ -118,11 +118,10 @@ const HomePage = () => {
 				right={
 					<Button
 						onClick={() => router.push("/support")}
-						variant="secondary"
-						size="icon"
-						className="rounded-full text-primary"
+						variant="link"
+						className="p-0 m-0 w-fit h-fit"
 					>
-						<Icons.HelpCircleIcon />
+						<Image src="/assets/icons/help.png" alt="help" width={64} height={64} className="w-16 h-16 object-contain" />
 					</Button>
 				}
 				headerBackground="bg-gradient-to-b from-background to-transparent"

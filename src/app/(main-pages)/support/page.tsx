@@ -2,6 +2,7 @@
 
 import React, { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Layout from "@/components/layout";
 import Header from "@/components/custom/header";
 import { Icons } from "@/components/icons";
@@ -60,10 +61,10 @@ export default function SupportPage() {
                 <h1 className="text-lg font-semibold text-background">Help & Support</h1>
             </Header>
 
-            <Layout className="pt-24 pb-10">
+            <Layout className="pt-4 pb-10">
                 <div className="space-y-6">
                     <div className="text-center">
-                        <Icons.MessageCircleIcon className="w-12 h-12 text-primary mx-auto mb-2" />
+                        <Image src="/assets/icons/help.png" alt="help" width={48} height={48} className="w-16 h-16 mx-auto mb-2 object-contain" />
                         <h2 className="text-2xl font-bold">How can we help?</h2>
                         <p className="text-muted-foreground">Our support team is available 24/7 for app issues and roadside assistance.</p>
                     </div>
