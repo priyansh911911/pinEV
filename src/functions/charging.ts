@@ -77,7 +77,7 @@ export const getReadings = async (deviceId: string, idTag: string) => {
 	}
 
 	const data = await response.json();
-	
+
 	// Check for fault status in response
 	if (data.status === 'Faulted' || data.status === 'Unavailable' || data.errorCode) {
 		throw new Error(`Charger fault: ${data.status || data.errorCode}`);
