@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	images: { unoptimized: true },
-	// output: 'export',
+	output: 'export',
 	trailingSlash: true,
 	compiler: {
 		removeConsole: process.env.NODE_ENV === "production",
