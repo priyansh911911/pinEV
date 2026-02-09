@@ -250,6 +250,11 @@ const ChargingStatusPage = () => {
 						transactionId = res.result.transactionId || booking.charge_txn_id;
 						energyStart = Number(res.result.energyStart) || energyStart;
 
+						if (transactionId && String(transactionId) !== String(booking.charge_txn_id)) {
+							console.log("Updating local booking details with correct Transaction ID:", transactionId);
+							setBookingDetails(prev => (prev ? { ...prev, charge_txn_id: transactionId } : null));
+						}
+
 
 						if (res.result.energyStop && !isStoppingRef.current) {
 							console.log("energyStop detected, auto-stopping charging");

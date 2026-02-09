@@ -31,14 +31,14 @@ const ProfilePage = () => {
 						<Image src="/assets/images/user.png" alt="user-profile-pic" className="w-full" width={100} height={100} />
 					</div>
 					<h2 className="text-white text-center font-bold border px-4 mt-4 mx-auto py-1.5 border-gray-400 rounded-full inline-block">
-						{user.name || "Guest User"}
+						{user?.name || "Guest User"}
 					</h2>
 					{/* <p className="text-center text-xs text-gray-300 mt-2"> */}
 					{/* Member Since {formatDate("MMM, YYYY", new Date("2019-01-01"))} // TODO: Replace with actual date */}
 					{/* </p> */}
 				</div>
 			</Layout>
-			<MyVehicles user={user} />
+			{user && <MyVehicles user={user} />}
 		</>
 	);
 };
