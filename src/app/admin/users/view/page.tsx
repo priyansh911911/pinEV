@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import * as UserActions from "@/actions/users";
 import * as VehicleActions from "@/actions/vehicles";
 import * as ChargingActions from "@/actions/vehicles-chargings";
-import { Car, Zap, Mail, Phone, Calendar, ShieldCheck } from "lucide-react";
+import * as TransactionActions from "@/actions/transactions";
+import { Car, Zap, Mail, Phone, Calendar, ShieldCheck, TrendingUp, TrendingDown } from "lucide-react";
 
 const UserDetailPage = () => {
     return (
@@ -28,6 +29,7 @@ const Component = () => {
     const [user, setUser] = useState<any>(null);
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [chargings, setChargings] = useState<any[]>([]);
+    const [walletStats, setWalletStats] = useState({ totalCredit: 0, totalDebit: 0 });
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -62,6 +64,24 @@ const Component = () => {
                 const chargingsData = await ChargingActions.getVehiclesChargings({ search: `user:${id}` });
                 if (chargingsData && !chargingsData.err) {
                     setChargings(Array.isArray(chargingsData.result) ? chargingsData.result : []);
+                }
+
+                // Fetch User Transactions for Wallet Stats
+                const transactionsRes = await TransactionActions.getTransactions({ search: `user:${id}` });
+                if (!transactionsRes.err) {
+                    const transactions = transactionsRes.result || [];
+
+                    // Calculate User Credit
+                    const totalCredit = transactions
+                        .filter((t: any) => t.type === "credit")
+                        .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
+                    // Calculate User Debit
+                    const totalDebit = transactions
+                        .filter((t: any) => t.type === "debit")
+                        .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
+                    setWalletStats({ totalCredit, totalDebit });
                 }
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
@@ -114,16 +134,39 @@ const Component = () => {
                     {/* User Basic Info */}
                     <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-white to-slate-50">
                         <CardHeader className="bg-slate-900 text-white p-4 md:p-6">
-                            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-                                <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-slate-700 flex items-center justify-center text-2xl md:text-3xl font-bold shrink-0">
-                                    {user.name?.charAt(0)}
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative">
+                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left z-10 w-full md:w-auto">
+                                    <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-slate-700 flex items-center justify-center text-2xl md:text-3xl font-bold shrink-0 border-2 border-slate-600 shadow-md">
+                                        {user.name?.charAt(0)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <CardTitle className="text-2xl md:text-3xl font-bold truncate tracking-tight">{user.name}</CardTitle>
+                                        <p className="text-slate-400 text-sm md:text-base font-medium">ID: {user.id}</p>
+                                        <Badge variant="secondary" className="mt-2 bg-blue-500/10 text-blue-200 border border-blue-500/20 px-3 py-0.5 text-xs md:text-sm shadow-sm">
+                                            {user.role || 'User'}
+                                        </Badge>
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-xl md:text-2xl lg:text-3xl truncate">{user.name}</CardTitle>
-                                    <p className="text-slate-400 text-sm md:text-base">ID: {user.id}</p>
-                                    <Badge variant="secondary" className="mt-2 bg-blue-500/20 text-blue-200 border-none px-3 py-1 text-xs md:text-sm">
-                                        {user.role || 'User'}
-                                    </Badge>
+
+                                {/* Wallet Stats in Header */}
+                                <div className="flex flex-row w-full md:w-auto items-center justify-between md:justify-end gap-2 md:gap-8 mt-4 md:mt-0 bg-slate-800/50 md:bg-transparent rounded-xl p-4 md:p-0 border border-slate-700/50 md:border-none backdrop-blur-sm md:backdrop-blur-none">
+                                    <div className="flex flex-col items-center md:items-end flex-1 md:flex-none">
+                                        <div className="flex items-center gap-1.5 text-green-400 mb-1">
+                                            <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                            <span className="text-[10px] md:text-sm font-bold uppercase tracking-wider opacity-90">Total Credit</span>
+                                        </div>
+                                        <p className="text-lg md:text-2xl font-bold text-green-300 tracking-tight">₹ {walletStats.totalCredit.toLocaleString()}</p>
+                                    </div>
+
+                                    <div className="bg-slate-700 w-px h-8 md:h-10 mx-2 md:mt-1"></div>
+
+                                    <div className="flex flex-col items-center md:items-end flex-1 md:flex-none">
+                                        <div className="flex items-center gap-1.5 text-red-400 mb-1">
+                                            <TrendingDown className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                            <span className="text-[10px] md:text-sm font-bold uppercase tracking-wider opacity-90">Total Debit</span>
+                                        </div>
+                                        <p className="text-lg md:text-2xl font-bold text-red-300 tracking-tight">₹ {walletStats.totalDebit.toLocaleString()}</p>
+                                    </div>
                                 </div>
                             </div>
                         </CardHeader>

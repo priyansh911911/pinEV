@@ -1,5 +1,7 @@
 import {
 	ArrowLeft,
+	ArrowUp,
+	ArrowDown,
 	Bell,
 	BookmarkIcon,
 	CalendarIcon,
@@ -116,6 +118,8 @@ export const Icons = {
 	CopyCheckIcon,
 	CopyXIcon,
 	PowerIcon,
+	ArrowUpIcon: ArrowUp,
+	ArrowDownIcon: ArrowDown,
 };
 
 export type Icon = keyof typeof Icons;

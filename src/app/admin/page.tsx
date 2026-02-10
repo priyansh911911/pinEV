@@ -22,6 +22,8 @@ const AdminPage = () => {
 		activeStations: 0,
 		totalTransactions: 0,
 		revenue: 0,
+		totalCredit: 0,
+		totalDebit: 0,
 	});
 
 	const fetchDashboardData = useCallback(async () => {
@@ -54,6 +56,28 @@ const AdminPage = () => {
 					revenue,
 				}));
 			}
+
+			// Fetch ALL transactions for global Credit/Debit stats (Admins see system-wide totals)
+			const allTransactionsRes = await TransactionActions.getTransactions({ search: "" });
+			if (!allTransactionsRes.err) {
+				const allTransactions = allTransactionsRes.result || [];
+
+				// Calculate Global Credit (Sum of 'credit' type rows using amount column)
+				const totalCredit = allTransactions
+					.filter((t: any) => t.type === "credit")
+					.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
+				// Calculate Global Debit (Sum of 'debit' type rows using amount column)
+				const totalDebit = allTransactions
+					.filter((t: any) => t.type === "debit")
+					.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
+				setStatistics(prev => ({
+					...prev,
+					totalCredit,
+					totalDebit,
+				}));
+			}
 		} catch (error) {
 			console.error("Failed to fetch dashboard data:", error);
 		} finally {
@@ -81,12 +105,34 @@ const AdminPage = () => {
 							<div className="flex justify-between items-center mb-4">
 								<h3 className="font-semibold">Total Revenue</h3>
 							</div>
-							<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2 mb-6">
 								<Icons.IndianRupeeIcon className="w-6 h-6 text-primary" />
 								<span className="text-3xl font-bold">
 									{isLoading ? "..." : statistics.revenue.toLocaleString()}
 								</span>
 							</div>
+
+							<div className="grid grid-cols-2 gap-4 pt-4 border-t">
+								<div>
+									<p className="text-sm text-muted-foreground mb-1">Total Credit</p>
+									<div className="flex items-center gap-1 text-green-600">
+										<Icons.ArrowUpIcon className="w-4 h-4" />
+										<span className="text-lg font-bold">
+											₹ {isLoading ? "..." : statistics.totalCredit.toLocaleString()}
+										</span>
+									</div>
+								</div>
+								<div>
+									<p className="text-sm text-muted-foreground mb-1">Total Debit</p>
+									<div className="flex items-center gap-1 text-red-600">
+										<Icons.ArrowDownIcon className="w-4 h-4" />
+										<span className="text-lg font-bold">
+											₹ {isLoading ? "..." : statistics.totalDebit.toLocaleString()}
+										</span>
+									</div>
+								</div>
+							</div>
+
 						</CardContent>
 					</Card>
 
