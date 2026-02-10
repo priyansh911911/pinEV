@@ -343,8 +343,8 @@ const ChargingSessionsAdminPage = () => {
 											</div> */}
 											<div className="flex items-center gap-2 justify-end text-right">
 												<div className="flex flex-col">
-													<span className="text-xs text-muted-foreground">Amount Paid</span>
-													<span className="text-lg font-bold text-green-600">₹{session.amount_paid}</span>
+													<span className="text-xs text-muted-foreground">Final Amount</span>
+													<span className="text-lg font-bold text-green-600">₹{session.final_amount ?? 0}</span>
 												</div>
 											</div>
 										</div>
