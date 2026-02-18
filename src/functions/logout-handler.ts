@@ -8,11 +8,12 @@ import { format } from "date-fns";
 /**
  * Stops all active charging sessions for a user when they log out
  * @param userId - The ID of the user logging out
+ * @param reason - Reason for stopping (logout, manual_stop)
  * @returns Promise<boolean> - Returns true if all sessions were stopped successfully
  */
-export const stopActiveChargingSessions = async (userId: string): Promise<boolean> => {
+export const stopActiveChargingSessions = async (userId: string, reason: string = 'unknown'): Promise<boolean> => {
 	try {
-		console.log('Stopping active charging sessions for user:', userId);
+		console.log(`[${reason.toUpperCase()}] Stopping active charging sessions for user:`, userId);
 
 		// Get all active charging sessions for the user
 		const activeSessionsRes = await getVehiclesChargings({
@@ -53,7 +54,7 @@ export const stopActiveChargingSessions = async (userId: string): Promise<boolea
 					return false;
 				}
 
-				console.log(`Stopping session ${session.id} with connector ${connectorId}`);
+				console.log(`[${reason.toUpperCase()}] Stopping session ${session.id} with connector ${connectorId}`);
 
 				// Stop the charging session
 				const stopChargeRes = await toggleCharging({
@@ -64,7 +65,7 @@ export const stopActiveChargingSessions = async (userId: string): Promise<boolea
 					idTag: String(userId),
 				});
 
-				console.log(`Stop charge response for session ${session.id}:`, stopChargeRes);
+				console.log(`[${reason.toUpperCase()}] Stop charge response for session ${session.id}:`, stopChargeRes);
 
 				// Skip API call validation for test sessions (txn_id starts with 'test_')
 				if (session.charge_txn_id?.startsWith('test_')) {
@@ -143,7 +144,7 @@ export const stopActiveChargingSessions = async (userId: string): Promise<boolea
 					};
 
 					await saveTransaction({ body: walletBody });
-					console.log(`Created wallet transaction for session ${session.id}, amount: ${finalAmount}`);
+					console.log(`[${reason.toUpperCase()}] Created wallet transaction for session ${session.id}, amount: ${finalAmount}`);
 				} catch (walletError) {
 					console.error(`Failed to create wallet transaction for session ${session.id}:`, walletError);
 				}

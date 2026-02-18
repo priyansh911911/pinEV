@@ -73,7 +73,7 @@ const NativeActions: FC<NativeActionsProps> = ({}) => {
 				if (isUpdateAvailable || currentRoute == "") {
 					// Stop active charging sessions before app exit
 					if (isLoggedin && user?.id) {
-						stopActiveChargingSessions(String(user.id)).catch(error => {
+						stopActiveChargingSessions(String(user.id), 'app_exit').catch(error => {
 							console.error("Error stopping charging sessions on app exit:", error);
 						});
 					}

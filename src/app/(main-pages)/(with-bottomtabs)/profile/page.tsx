@@ -93,7 +93,7 @@ const HeaderDrawer = ({ user }: { user: User }) => {
 
 								// Stop charging sessions and logout
 								if (user?.id) {
-									stopActiveChargingSessions(String(user.id)).catch(console.error);
+									stopActiveChargingSessions(String(user.id), 'logout').catch(console.error);
 								}
 
 								// Clear user session
