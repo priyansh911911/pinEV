@@ -38,7 +38,7 @@ const RechargeDrawer: FC<RechargeDrawerProps> = ({
 								</div>
 								<Input
 									type="number"
-									placeholder="0.00"
+									placeholder="Custom Amount"
 									className="pl-8"
 									value={fields.amount}
 									onChange={e => setFields({ ...fields, amount: e.target.value })}
@@ -47,7 +47,7 @@ const RechargeDrawer: FC<RechargeDrawerProps> = ({
 
 							{/* Quick Amount Buttons */}
 							<div className="grid grid-cols-4 gap-2">
-								{[500, 1000, 2000, 5000].map(amount => (
+								{[50, 100, 500, 1000].map(amount => (
 									<Button
 										key={amount}
 										type="button"

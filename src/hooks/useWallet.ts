@@ -37,7 +37,7 @@ const useWallet = () => {
 	return {
 		walletBalance: wallet ? wallet.total_balance : 0,
 		isWalletLoading: isLoading,
-		refreshWallet: handleGetWalletData,
+		refetchWallet: handleGetWalletData,
 		isWalletEmpty: wallet ? wallet.total_balance === 0 : false,
 	};
 };

@@ -45,7 +45,18 @@ const ChargingStatusPage = () => {
 	const isStoppingRef = useRef(isStoppingCharge);
 
 	const { isNative, user } = Stores();
-	const { walletBalance } = useWallet();
+	const { walletBalance, refetchWallet } = useWallet();
+
+	// Refetch wallet balance every 10 seconds during active charging
+	useEffect(() => {
+		if (!bookingDetails || bookingDetails.status !== "active") return;
+
+		const walletRefreshTimer = setInterval(() => {
+			refetchWallet();
+		}, 10000);
+
+		return () => clearInterval(walletRefreshTimer);
+	}, [bookingDetails, refetchWallet]);
 
 	const handleWalletFunctionality = useCallback(
 		async (date: string, amount: number = 0) => {
@@ -458,6 +469,25 @@ const ChargingStatusPage = () => {
 
 		return () => clearInterval(timer);
 	}, [chargingData, bookingDetails, handleStopCharge]);
+
+	// Check wallet balance every 10 seconds
+	useEffect(() => {
+		if (!chargingData || !bookingDetails) return;
+		if (bookingDetails.status !== "active") return;
+
+		const walletCheckTimer = setInterval(() => {
+			if (isStoppingRef.current) return;
+
+			const currentCost = chargingData.pricing.currentCost;
+			if (currentCost >= walletBalance) {
+				clearInterval(walletCheckTimer);
+				toast.error("Insufficient wallet balance. Stopping charge...");
+				handleStopCharge();
+			}
+		}, 10000);
+
+		return () => clearInterval(walletCheckTimer);
+	}, [chargingData, bookingDetails, walletBalance, handleStopCharge]);
 
 	const formatTime = (seconds: number) => {
 		const hrs = Math.floor(seconds / 3600);

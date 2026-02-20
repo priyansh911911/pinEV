@@ -197,7 +197,7 @@ const SchedulePage = () => {
 					</div>
 					<Slider
 						min={15}
-						max={480}
+						max={1440}
 						step={5}
 						value={[duration || 15]}
 						onValueChange={value => handleDurationClick(value[0])}
